@@ -1,0 +1,26 @@
+kppy v.0.1
+==========
+
+A Python-module to provide an API to KeePass 1.x files.
+
+* License: GPL v3
+* Author: Karsten-Kai König
+* Website:
+* Stable download:
+* Bug tracker:
+* Git:
+
+Features:
+---------
+
+* Access to KeePass 1.x files
+** Open and close (planned)
+** Reading (planned)
+** Edit (planned)
+
+* Secure memory (planned)
+
+Dependencies:
+-------------
+
+* Python v.3 
