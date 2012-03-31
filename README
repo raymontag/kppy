@@ -18,9 +18,8 @@ Features:
 ** Reading (planned)
 ** Edit (planned)
 
-* Secure memory (planned)
-
 Dependencies:
 -------------
 
-* Python v.3 
+* Python 3
+* PyCrypto's py3k branch
