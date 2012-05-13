@@ -292,25 +292,7 @@ class KPDB(object):
             del decrypted_content
             return false
 
-        del decrypted_content
-
-        has_V4_icons_metastream = False
-        for i in range(len(self._entries)):
-            if self._is_metastream(self._entries[i]) and \
-                self._entries[i].comment == "KPX_CUSTOM_ICONS_4":
-                has_V4_icons_metastream = True
-                break
-
-        i = 0
-        while i < len(self._entries):
-            if self._is_metastream(self._entries[i]):
-                if not self._parse_metastream(self._entries[i],
-                    has_V4_icons_metastream):
-                    unknown_metastreams.append(self._entries[i])
-                    i += 1
-                del self._entries[i]
-            i += 1
-                
+        del decrypted_content             
 
     def _transform_key(self, masterkey):
         """This method creates the key to decrypt the database"""
@@ -487,63 +469,5 @@ class KPDB(object):
                     self.groups[g].entries.append(self._entries[e])
                     self._entries[e].group = self.groups[g]
                     # from original KeePassX-code, but what does it do?
-                    self._entries[e].index = 0
-                    
+                    self._entries[e].index = 0           
         return True
-
-    def _is_metastream(self, entry):
-        if len(entry.binary) == 0 or entry.comment == "" or \
-            entry.binary_desc != "bin-stream" or entry.title != "Meta-Info" or \
-            entry.username != "SYSTEM" or entry.url != "$" or \
-            entry.image != 0:
-            return False
-        else:
-            return True
-
-    def _parse_metastream(self, entry, has_V4_icons_metastream):
-        print("Found Metastream: "+entry.comment)
-        
-        if entry.comment == "KPX_GROUP_TREE_STATE":
-            self._parse_group_treestate_metastream(entry.binary)
-            return True
-        elif entry.comment == "KPX_CUSTOM_ICONS_4":
-            self._parse_custom_icons_metastream(entry.binary)
-            return True
-        elif entry.comment == "KPX_CUSTOM_ICONS_3":
-            if not has_V4_icons_metastream:
-                self._parse_custom_icons_metastream_V3(entry.binary)
-            return True
-        elif entry.comment == "KPX_CUSTOM_ICONS_2":
-            print("Removed old CuIcMeSt v2")
-            return True
-        elif entry.comment == "KPX_CUSTOM_ICONS":
-            print("Removed old CuIcMeSt v1")
-            return True
-        else:
-            return False
-
-    def _parse_group_treestate_metastream(self, binary):
-        if len(binary < 4):
-            raise KPError('Discarded metastream KPX_GROUP_TREE_STATE because of a'
-                   'parsing error.')
-            return
-        num = struct.unpack('<I', binary[:4])[0]
-        if num*5 != len(binary)-4:
-            raise KPError('Discarded metastream KPX_GROUP_TREE_STATE because of a'
-                   'parsing error.')
-            return
-
-        self._treestate_metastream.clear
-
-        for i in range(num):
-            group_id = struct.unpack('<I', binary[5*i:4+5*i])[0]
-            is_expanded = struct.unpack('<?', binary[4+5*i:8+5*i])[0]
-            self._treestate_metastream.insert(group_id, is_expanded)
-
-        return
-            
-    def _parse_custom_icons_metastream(self, binary):
-        pass
-
-    def _parse_custom_icons_metastream_V3(self, binary):
-        pass
