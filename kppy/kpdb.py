@@ -292,8 +292,13 @@ class KPDB(object):
             del decrypted_content
             return false
 
-        del decrypted_content             
-
+        del decrypted_content
+                  
+        while i < len(self._entries):
+            if self._is_metastream(self._entries[i]):
+                del self._entries[i]
+            i += 1
+            
     def _transform_key(self, masterkey):
         """This method creates the key to decrypt the database"""
 
@@ -471,3 +476,13 @@ class KPDB(object):
                     # from original KeePassX-code, but what does it do?
                     self._entries[e].index = 0           
         return True
+
+    def _is_metastream(self, entry):
+        if len(entry.binary) == 0 or entry.comment == "" or \
+            entry.binary_desc != "bin-stream" or entry.title != "Meta-Info" or \
+            entry.username != "SYSTEM" or entry.url != "$" or \
+            entry.image != 0:
+            return False
+        else:
+            return True
+
