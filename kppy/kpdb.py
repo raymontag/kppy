@@ -18,6 +18,7 @@ kppy.  If not, see <http://www.gnu.org/licenses/>.
 
 import struct
 from datetime import datetime
+from os import remove
 
 from Crypto import Random
 from Crypto.Hash import SHA256
@@ -118,8 +119,9 @@ class KPDB(object):
         print(e)
     
     """
-    
-    def __init__(self, filepath=None, masterkey=None, read_only=False):
+
+    def __init__(self, filepath=None, masterkey=None, read_only=False,
+                 new = False):
         self.groups = []
         self.read_only = read_only
         self.filepath = filepath
@@ -133,15 +135,15 @@ class KPDB(object):
         self._unsupported_e_fields = []
         self._signature1 = 0x9AA2D903
         self._signature2 = 0xB54BFB65
-        self._enc_flag = 0
-        self._version = 0
+        self._enc_flag = 2
+        self._version = 0x00030002
         self._final_randomseed = ''
         self._enc_iv = ''
-        self._num_groups = 0
+        self._num_groups = 1
         self._num_entries = 0
         self._contents_hash = ''
-        self._transf_randomseed = ''
-        self._key_transf_rounds = 0
+        self._transf_randomseed = Random.get_random_bytes(32)
+        self._key_transf_rounds = 50000
 
         # Load an existing database
         if filepath is not None and masterkey is not None:
@@ -151,10 +153,24 @@ class KPDB(object):
             None and masterkey is None):
             raise KPError('Missing argument: file path or master key needed '
                           'additionally!')
-    
+
+        if new:
+            self._group_order = [(1,4), (2,9), (7,4), (8,2), (0xFFFF, 0)]
+            group = StdGroup()
+            group.id_ = 1
+            group.title = 'Internet'
+            group.image = 1
+            group.level = 0
+            group.parent = self._root_group
+            self.groups.append(group)
+        
     def load(self):
         """This method opens an existing database"""
 
+        if self.masterkey is None or self.filepath is None:
+            raise KPError('Can only load an existing database!')
+            return False
+        
         # Open the file
         try:
             handler = open(self.filepath, 'rb')
@@ -346,14 +362,27 @@ class KPDB(object):
         del decrypted_content
         del crypted_content
 
+        try:
+            handler = open(self.filepath+'.lock', 'w')
+            handler.write('')
+        finally:
+            handler.close()
+
+        return True
+
     def save(self, filepath = None):
         """This method saves the database.
 
         It's possible to parse a data path to an alternative file.
 
         """
+
         if self.read_only:
             raise KPError("The database has been opened read-only.")
+            return False
+        elif self.masterkey is None or (self.filepath is None and \
+            filepath is None):
+            raise KPError("Need a passphrase and a filepath to save the file.")
             return False
         
         content = bytearray()
@@ -437,7 +466,8 @@ class KPDB(object):
 
         encrypted_content = self._cbc_encrypt(content, final_key)
         del content
-
+        del final_key
+        
         # ...and write it out
         try:
             if filepath is None:
@@ -451,6 +481,24 @@ class KPDB(object):
             return False
         finally:
             handler.close
+
+        if self.filepath is None:
+            self.filepath = filepath
+            try:
+                handler = open(self.filepath+'.lock', 'w')
+                handler.write('')
+            finally:
+                handler.close()
+
+        return True
+
+    def close(self):
+        if self.filepath is not None:
+            remove(self.filepath+'.lock')
+            return True
+        else:
+            raise KPError('Can\'t close a not opened file')
+            return False
 
     def _transform_key(self):
         """This method creates the key to decrypt the database"""
@@ -473,7 +521,7 @@ class KPDB(object):
         sha_obj = SHA256.new()
         sha_obj.update(self._final_randomseed + hashed_key)
         return sha_obj.digest()
-    
+
     def _cbc_decrypt(self, final_key, crypted_content):
         """This method decrypts the database"""
 
