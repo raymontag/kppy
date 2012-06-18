@@ -153,8 +153,7 @@ class KPDB(object):
             None and masterkey is None):
             raise KPError('Missing argument: file path or master key needed '
                           'additionally!')
-
-        if new:
+        elif new:
             self._group_order = [(1,4), (2,9), (7,4), (8,2), (0xFFFF, 0)]
             group = StdGroup()
             group.id_ = 1
@@ -293,7 +292,6 @@ class KPDB(object):
     
             decrypted_content = decrypted_content[field_size:]
 
-            print(field_size)
             if pos >= len(crypted_content)+124:
                 raise KPError('Unexpected error: Offset is out of range.[G1]')
                 del decrypted_content
@@ -524,6 +522,36 @@ class KPDB(object):
         group.parent = self.groups[-1]
         self.groups.append(group)
         self._num_groups += 1
+
+        return True
+
+    def remove_group(self, id_ = None):
+        if id_ is None:
+            raise KPError("Need group id to remove a group")
+            return False
+
+        pos1 = 0
+        for i in self.groups:
+            if i.id_ == id_:
+                del self.groups[pos1]
+                break
+            pos1 += 1
+
+        pos2 = 0
+        pos3 = 0
+        while True:
+            t = self._group_order[pos3][0]
+            if pos1 == pos2:
+                del self._group_order[pos3]
+                if t == 0xFFFF:
+                    break
+            else:
+                pos3 += 1
+            if t == 0xFFFF:
+                pos2 += 1
+                pos3 += 1
+
+        self._num_groups -= 1
 
     def _transform_key(self):
         """This method creates the key to decrypt the database"""
