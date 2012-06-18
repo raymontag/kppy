@@ -519,7 +519,7 @@ class KPDB(object):
         group.title = title
         group.image = 1
         group.level = 0
-        group.parent = self.groups[-1]
+        group.parent = self._root_group
         self.groups.append(group)
         self._num_groups += 1
 
@@ -533,12 +533,16 @@ class KPDB(object):
         pos1 = 0
         for i in self.groups:
             if i.id_ == id_:
+                for j in self.groups[pos1].children:
+                    self.remove_group(j.id_)
+                self.groups[pos1].parent.children.remove(self.groups[pos1])
                 del self.groups[pos1]
                 break
             pos1 += 1
 
         pos2 = 0
         pos3 = 0
+
         while True:
             t = self._group_order[pos3][0]
             if pos1 == pos2:
@@ -755,8 +759,8 @@ class KPDB(object):
                 continue
 
             for j in range(i-1, -1):
-                if Levels[j] < Levels[i]:
-                    if Levels[i]-Levels[j] != 1: return false;
+                if levels[j] < Levels[i]:
+                    if levels[i]-levels[j] != 1: return false;
                     
                     self.groups[i].parent = self.groups[j]
                     self.groups[i].index = len(groups[j].children)
