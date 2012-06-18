@@ -257,7 +257,7 @@ class KPDB(object):
             field_type = struct.unpack('<H', decrypted_content[:2])[0]
             decrypted_content = decrypted_content[2:]
             pos += 2
-            
+
             # Check if offset is alright
             if pos >= len(crypted_content)+124:
                 raise KPError('Unexpected error: Offset is out of range.[G1]')
@@ -292,8 +292,8 @@ class KPDB(object):
                 self._unsupported_g_fields.append(decrypted_content[:field_size])
     
             decrypted_content = decrypted_content[field_size:]
-            pos += field_size
-           
+
+            print(field_size)
             if pos >= len(crypted_content)+124:
                 raise KPError('Unexpected error: Offset is out of range.[G1]')
                 del decrypted_content
@@ -499,6 +499,31 @@ class KPDB(object):
         else:
             raise KPError('Can\'t close a not opened file')
             return False
+
+    def create_group(self, title = None):
+        if title is None:
+            raise KPError("Need a group title")
+            return False
+
+        self._group_order.append((1,4))
+        self._group_order.append((2,len(title)+1))
+        self._group_order.append((7,4))
+        self._group_order.append((8,2))
+        self._group_order.append((0xFFFF, 0))
+        group = StdGroup()
+
+        id_ = 1
+        for i in self.groups:
+            if i.id_ == id_:
+                id_ += 1
+
+        group.id_ = id_
+        group.title = title
+        group.image = 1
+        group.level = 0
+        group.parent = self.groups[-1]
+        self.groups.append(group)
+        self._num_groups += 1
 
     def _transform_key(self):
         """This method creates the key to decrypt the database"""
