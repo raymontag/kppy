@@ -13,9 +13,9 @@ A Python-module to provide an API to KeePass 1.x files.
 Features:
 ---------
 
-* Full Access to KeePass 1.x files
-** Open and save 
-** Edit (planned)
+* Full Access to KeePass 1.x files:
+** Open, save and close KP-files correctly (works)
+** Edit KP-files correctly and comfortable (planned)
 
 Dependencies:
 -------------

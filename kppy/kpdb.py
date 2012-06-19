@@ -49,6 +49,27 @@ class StdGroup(object):
         self.parent = None
         self.children = []
         self.entries = []
+        self.db = None
+
+    def set_title(self, title = None):
+        """ This method just calls set_group_title of the holding db."""
+
+        if title is None:
+            raise KPError("Need a new title!")
+            return False
+        
+        if self.db.set_group_title(self.id_, title) is True:
+            return True
+        else:
+            return False
+
+    def set_image(self, image = None):
+        """This method just calls set_group_image of the holding db."""
+
+        if self.db.set_group_image(self.id_, image) is True:
+            return True
+        else:
+            return False
 
 class StdEntry(object):
     """StdEntry represents a simple entry of a KeePass 1.x database.
@@ -164,6 +185,7 @@ class KPDB(object):
             group.image = 1
             group.level = 0
             group.parent = self._root_group
+            group.db = self
             self.groups.append(group)
         
     def load(self):
@@ -284,6 +306,7 @@ class KPDB(object):
 
             # If the end of a group is reached append it to the groups array
             if field_type == 0xFFFF and b_ret == True:
+                group.db = self
                 self.groups.append(group)
                 group = StdGroup()
                 cur_group += 1
@@ -336,7 +359,10 @@ class KPDB(object):
             if field_type == 0xFFFF and b_ret == True:
                 self._entries.append(entry)
                 if not entry.group_id:
-                    pass
+                    raise KPError("Found entry without group!")
+                    del decrypted_content
+                    del crypted_content
+                    return False
                 
                 entry = StdEntry()
                 cur_entry += 1
@@ -619,6 +645,53 @@ class KPDB(object):
         if len(children) > 0:
             for i in children:
                 self.remove_group(i)
+
+    def set_group_title(self, id_ = None, title = None):
+        """This method is used to change a group title.
+
+            Two arguments are needed: The id of the group whose title should
+            be changed and the new title.
+        """
+        
+        if id_ is None or title is None:
+            raise KPError("Need a group id and a new title!")
+            return False
+
+        pos1 = 0
+        for i in self.groups:
+            pos1 += 1
+            if i.id_ == id_:
+                i.title = title
+                break
+
+        for i in self._group_order:
+            if i[0] == 0xFFFF:
+                pos1 -= 1
+            if pos1 == 1 and i[0] == 0x0002:
+                index = self._group_order.index(i)
+                self._group_order.remove(i)
+                self._group_order.insert(index, (2, len(title)+1))
+                break
+
+        return True
+
+    def set_group_image(self, id_ = None, image = None):
+        """This method is used to change the image number if a group.
+
+            wo arguments are needed: The id of the group whose image should
+            be changed and the new image number.
+        """
+        
+        if id_ is None or image is None:
+            raise KPError("Need a group id and an image number!")
+            return False
+
+        for i in self.groups:
+            if i.id_ == id_:
+                i.image = image
+                break
+
+        return True
 
     def _transform_key(self):
         """This method creates the key to decrypt the database"""
