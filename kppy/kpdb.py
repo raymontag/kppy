@@ -100,7 +100,7 @@ class KPDB(object):
     
     Attributes:
     - groups holds all groups of the database
-    - read_only declares if the file shold be read-only or not
+    - read_only declares if the file should be read-only or not
     - filepath holds the path of the database
     - masterkey is the passphrase to encrypt and decrypt the database
     
@@ -126,7 +126,9 @@ class KPDB(object):
         self.read_only = read_only
         self.filepath = filepath
         self.masterkey = masterkey
-        
+
+        # This are attributes that are needed internally. You should not
+        # change them directly, it could damage the database!
         self._entries = []
         self._root_group = StdGroup()
         self._group_order = []
@@ -152,7 +154,8 @@ class KPDB(object):
         elif (filepath is None and masterkey is not None) or (filepath is not \
             None and masterkey is None):
             raise KPError('Missing argument: file path or master key needed '
-                          'additionally!')
+                          'additionally to open an existing database!')
+        # Due to the design of KeePass, at least one group is needed.
         elif new:
             self._group_order = [(1,4), (2,9), (7,4), (8,2), (0xFFFF, 0)]
             group = StdGroup()
@@ -223,6 +226,7 @@ class KPDB(object):
             raise KPError('Unsupported file version!')
             del crypted_content
             return False
+        #Actually, only AES is supported.
         elif not self._enc_flag & 2:
             raise KPError('Unsupported file encryption!')
             del crypted_content
@@ -382,6 +386,9 @@ class KPDB(object):
             filepath is None):
             raise KPError("Need a passphrase and a filepath to save the file.")
             return False
+        elif self._num_groups == 0:
+            raise KPError("Need at least one group!")
+            return False
         
         content = bytearray()
         pos = 0
@@ -402,7 +409,7 @@ class KPDB(object):
             content += struct.pack('<H', field_type)
             content += struct.pack('<I', field_size)
 
-            # Write unsupported files
+            # Write unsupported fields
             if field_type == 0x0000 or field_type == 0x0003 or \
                 field_type == 0x0004 or field_type == 0x0005 or \
                 field_type == 0x0006 or field_type == 0x0009:
@@ -491,6 +498,8 @@ class KPDB(object):
         return True
 
     def close(self):
+        """This method closes the database correctly."""
+        
         if self.filepath is not None:
             remove(self.filepath+'.lock')
             return True
@@ -498,16 +507,18 @@ class KPDB(object):
             raise KPError('Can\'t close a not opened file')
             return False
 
-    def create_group(self, title = None):
+    def create_group(self, title = None, parent_id = None):
+        """This method creates a new group.
+
+            A group title is needed or no group will be created.
+
+            If an parent id is given, the group will be created as a sub-group.
+        """
+        
         if title is None:
-            raise KPError("Need a group title")
+            raise KPError("Need a group title to create a group.")
             return False
 
-        self._group_order.append((1,4))
-        self._group_order.append((2,len(title)+1))
-        self._group_order.append((7,4))
-        self._group_order.append((8,2))
-        self._group_order.append((0xFFFF, 0))
         group = StdGroup()
 
         id_ = 1
@@ -517,25 +528,74 @@ class KPDB(object):
 
         group.id_ = id_
         group.title = title
+        # This is just needed for compatibility to KeePassX
         group.image = 1
-        group.level = 0
-        group.parent = self._root_group
-        self.groups.append(group)
+        # If no parent is given, just append the new group at the end
+        if parent_id is None:
+            group.parent = self._root_group
+            self._root_group.children.append(group)
+            group.level = 0
+            self.groups.append(group)
+            self._group_order.append((1,4))
+            self._group_order.append((2,len(title)+1))
+            self._group_order.append((7,4))
+            self._group_order.append((8,2))
+            self._group_order.append((0xFFFF, 0))
+        # If a parent is given it's more complex
+        else:
+            # First count through all groups...
+            pos1 = 0
+            for i in self.groups:
+                pos1 += 1
+                # ...until parent is found
+                if i.id_ == parent_id:
+                    # Append the group to the parent as a children and set
+                    # the other trivial stuff
+                    i.children.append(group)
+                    group.parent = i
+                    group.level = i.level+1
+                    # Here is the counter pos1 needed to insert the new group
+                    # at the right position
+                    self.groups.insert(pos1, group)
+
+                    # And now insert the field information at the right pos.
+                    pos2 = 0
+                    for j in self._group_order:
+                        pos2 += 1
+                        # The loop count through the order until the information
+                        # of the parent are found. Then insert the new field
+                        # information.
+                        if j[0] == 0xFFFF:
+                            pos1 -= 1
+                        if pos1 == 0:
+                            self._group_order.insert(pos2, (0xFFFF, 0))
+                            self._group_order.insert(pos2, (8,2))
+                            self._group_order.insert(pos2, (7,4))
+                            self._group_order.insert(pos2, (2,len(title)+1))
+                            self._group_order.insert(pos2, (1,4))
+                            break
+                            
         self._num_groups += 1
 
         return True
 
     def remove_group(self, id_ = None):
+        """This method removes a group.
+
+            The group id is needed to remove the group.
+        """
+        
         if id_ is None:
             raise KPError("Need group id to remove a group")
             return False
 
         pos1 = 0
+        children = []
         for i in self.groups:
             if i.id_ == id_:
-                for j in self.groups[pos1].children:
-                    self.remove_group(j.id_)
-                self.groups[pos1].parent.children.remove(self.groups[pos1])
+                for j in i.children:
+                    children.append(j.id_)
+                i.parent.children.remove(i)
                 del self.groups[pos1]
                 break
             pos1 += 1
@@ -553,9 +613,12 @@ class KPDB(object):
                 pos3 += 1
             if t == 0xFFFF:
                 pos2 += 1
-                pos3 += 1
 
         self._num_groups -= 1
+
+        if len(children) > 0:
+            for i in children:
+                self.remove_group(i)
 
     def _transform_key(self):
         """This method creates the key to decrypt the database"""
@@ -758,15 +821,17 @@ class KPDB(object):
                 self._root_group.children.append(self.groups[i])
                 continue
 
-            for j in range(i-1, -1):
-                if levels[j] < Levels[i]:
+            j = i-1
+            while j >= 0:
+                if levels[j] < levels[i]:
                     if levels[i]-levels[j] != 1: return false;
                     
                     self.groups[i].parent = self.groups[j]
-                    self.groups[i].index = len(groups[j].children)
+                    self.groups[i].index = len(self.groups[j].children)
                     self.groups[i].parent.children.append(self.groups[i])
                     break
                 if j == 0: return false;
+                j -= 1
             
         for e in range(len(self._entries)):
             for g in range(len(self.groups)):
