@@ -334,7 +334,6 @@ class KPDB(object):
         entry = StdEntry()
         
         while cur_entry < self._num_entries:
-            print(decrypted_content)
             field_type = struct.unpack('<H', decrypted_content[:2])[0]
             decrypted_content = decrypted_content[2:]
             pos += 2
@@ -761,9 +760,41 @@ class KPDB(object):
                          datetime.now().replace(microsecond = 0),
                          datetime(y, mon, d, h, min_, s))
         self._entries.append(entry)
+        group.entries.append(entry)
         self._num_entries += 1
         
         return True
+
+    def remove_entry(self, group_id = None, index = None):
+        if group_id == None or index == None:
+            raise KPError("Need a group id and an index.")
+            return False
+        
+        for i in self.groups:
+            if i.id_ == group_id:
+                if index > len(i.entries)-1:
+                    raise KPError("No entry with given entry exists.")
+                    return False
+                temp = i.entries[index]
+                del i.entries[index]
+                pos1 = self._entries.index(temp)
+                self._entries.remove(temp)
+                del temp
+        
+        pos2 = 0
+        pos3 = 0
+        while True:
+            t = self._entry_order[pos3][0]
+            if pos1 == pos2:
+                del self._entry_order[pos3]
+                if t == 0xFFFF:
+                    break
+            else:
+                pos3 += 1
+            if t == 0xFFFF:
+                pos2 += 1
+        
+        self._num_entries -= 1
 
     def _transform_key(self):
         """This method creates the key to decrypt the database"""
