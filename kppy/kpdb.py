@@ -714,6 +714,7 @@ class KPDB(object):
                 - s is a second between 0 and 59
         """
         
+        # Search for the group.
         group = None
         for i in self.groups:
             if group_id == i.id_:
@@ -766,6 +767,12 @@ class KPDB(object):
         return True
 
     def remove_entry(self, group_id = None, index = None):
+        """This method can remove entries.
+        
+            The id of the group which holds the entry is needed as well as the
+            index of the entry in the entries list attribute of the given group.
+        """
+        
         if group_id == None or index == None:
             raise KPError("Need a group id and an index.")
             return False
@@ -780,6 +787,9 @@ class KPDB(object):
                 pos1 = self._entries.index(temp)
                 self._entries.remove(temp)
                 del temp
+            elif i is self.groups[-1]:
+                raise KPError("Given group doesn't exist")
+                return False
         
         pos2 = 0
         pos3 = 0
@@ -795,6 +805,8 @@ class KPDB(object):
                 pos2 += 1
         
         self._num_entries -= 1
+        
+        return True
 
     def _transform_key(self):
         """This method creates the key to decrypt the database"""
