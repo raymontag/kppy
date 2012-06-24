@@ -41,15 +41,17 @@ class StdGroup(object):
     
     """
 
-    def __init__(self):
-        self.id_ = None
-        self.title = None
-        self.image = None
-        self.level = None
-        self.parent = None
-        self.children = []
-        self.entries = []
-        self.db = None
+    def __init__(self, id_ = None, title = None, image = 1,
+                 level = 0, parent = None, children = [], entries = [], 
+                 db = None):
+        self.id_ = id_
+        self.title = title
+        self.image = image
+        self.level = level
+        self.parent = parent
+        self.children = children
+        self.entries = entries
+        self.db = db
 
     def set_title(self, title = None):
         """ This method just calls set_group_title of the holding db."""
@@ -78,22 +80,26 @@ class StdEntry(object):
     
     """
 
-    def __init__(self):
-        self.uuid = None
-        self.group_id = None
-        self.group = None
-        self.image = None
-        self.title = None
-        self.url = None
-        self.username = None
-        self.password = None
-        self.comment = None
-        self.binary_desc = None
-        self.creation = None
-        self.last_mod = None
-        self.last_access = None
-        self.expire = None
-        self.binary = None
+    def __init__(self, group_id = None, group = None,
+                 image = 1, title = None, url = None, username = None,
+                 password = None, comment = None, 
+                 creation = None, last_mod = None, last_access = None, 
+                 expire = None, uuid = None, binary_desc = None, binary = None):
+        self.uuid = uuid
+        self.group_id = group_id
+        self.group = group
+        self.image = image
+        self.title = title
+        self.url = url
+        self.username = username
+        self.password = password
+        self.comment = comment
+        self.binary_desc = binary_desc
+        self.creation = creation
+        self.last_mod = last_mod
+        self.last_access = last_access
+        self.expire = expire
+        self.binary = binary
 
 class KPError(Exception):
     """KPError is a exception class to handle exception raised by KPDB.
@@ -179,13 +185,8 @@ class KPDB(object):
         # Due to the design of KeePass, at least one group is needed.
         elif new:
             self._group_order = [(1,4), (2,9), (7,4), (8,2), (0xFFFF, 0)]
-            group = StdGroup()
-            group.id_ = 1
-            group.title = 'Internet'
-            group.image = 1
-            group.level = 0
-            group.parent = self._root_group
-            group.db = self
+            group = StdGroup(1, 'Internet', 1, 0, self._root_group, [], [],
+                             self)
             self.groups.append(group)
         
     def load(self):
@@ -333,6 +334,7 @@ class KPDB(object):
         entry = StdEntry()
         
         while cur_entry < self._num_entries:
+            print(decrypted_content)
             field_type = struct.unpack('<H', decrypted_content[:2])[0]
             decrypted_content = decrypted_content[2:]
             pos += 2
@@ -545,17 +547,13 @@ class KPDB(object):
             raise KPError("Need a group title to create a group.")
             return False
 
-        group = StdGroup()
-
         id_ = 1
         for i in self.groups:
             if i.id_ == id_:
                 id_ += 1
 
-        group.id_ = id_
-        group.title = title
-        # This is just needed for compatibility to KeePassX
-        group.image = 1
+        group = StdGroup(id_, title, image)
+
         # If no parent is given, just append the new group at the end
         if parent_id is None:
             group.parent = self._root_group
@@ -691,6 +689,80 @@ class KPDB(object):
                 i.image = image
                 break
 
+        return True
+
+    def create_entry(self, group_id = None, title = "", image = 1, url = "",
+                     username = "", password = "", comment = "",
+                     y = 2999, mon = 12, d = 28, h = 23, min_ = 59,
+                     s = 59):
+        """This method creates a new entry.
+            
+            The group id of the group which should hold the entry is needed.
+            
+            The must be at least one of the following parameters given:
+                - an entry title
+                - an url
+                - an username
+                - an password
+                - an comment
+            
+            It is possible to give an expire date in the following way:
+                - y is the year between 1 and 9999 inclusive
+                - mon is the month between 1 and 12
+                - d is a day in the given month
+                - h is a hour between 0 and 23
+                - min_ is a minute between 0 and 59
+                - s is a second between 0 and 59
+        """
+        
+        group = None
+        for i in self.groups:
+            if group_id == i.id_:
+                group = i
+                break
+            elif i is self.groups[-1]:
+                raise KPError("No group for given group id.")
+                return False
+        
+        if y > 9999 or y < 1 or mon > 12 or mon < 1 or d > 31 or d < 1 or \
+            h > 23 or h < 0 or min_ > 59 or min_ < 0 or s > 59 or s < 0:
+            raise KPError("No legal date")
+            return False
+        
+        if ((mon == 1 or mon == 3 or mon == 5 or mon == 7 or mon == 8 or \
+             mon == 10 or mon == 12) and d > 31) or ((mon == 4 or mon == 6 or \
+             mon == 9 or mon == 11) and d > 30) or (mon == 2 and d > 28):
+            raise KPError("Given day doesn't exist in given month")
+            return False
+            
+        if title == "" and url == "" and username == "" and \
+            password == "" and comment == "":
+            raise KPError("Need at least one attribute to create an"
+                          "entry.")
+            return False
+        
+        self._entry_order.append((0x0002, 4))
+        self._entry_order.append((0x0003, 4))
+        self._entry_order.append((0x0004, len(title)+1))
+        self._entry_order.append((0x0005, len(url)+1))
+        self._entry_order.append((0x0006, len(username)+1))
+        self._entry_order.append((0x0007, len(password)+1))
+        self._entry_order.append((0x0008, len(comment)+1))
+        self._entry_order.append((0x0009, 5))
+        self._entry_order.append((0x000A, 5))
+        self._entry_order.append((0x000B, 5))
+        self._entry_order.append((0x000C, 5))
+        self._entry_order.append((0xFFFF, 0))
+        
+        entry = StdEntry(group.id_, group, image, title, url, username,
+                         password, comment, 
+                         datetime.now().replace(microsecond = 0),
+                         datetime.now().replace(microsecond = 0),
+                         datetime.now().replace(microsecond = 0),
+                         datetime(y, mon, d, h, min_, s))
+        self._entries.append(entry)
+        self._num_entries += 1
+        
         return True
 
     def _transform_key(self):
