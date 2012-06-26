@@ -259,7 +259,6 @@ class KPDB(object):
         final_key = self._transform_key()
         # ...decrypt the content
         decrypted_content = self._cbc_decrypt(final_key, crypted_content)
-        del final_key
 
         # Check if decryption failed
         if (len(decrypted_content) > 2147483446) or \
@@ -269,8 +268,14 @@ class KPDB(object):
             del decrypted_content
             del crypted_content
             return False
-        
-        # (Implement correct comparison of contents hash and final key)
+
+        sha_obj = SHA256.new()
+        sha_obj.update(decrypted_content)
+        if not self._contents_hash == sha_obj.digest():
+            raise KPError("Hash test failed.\nThe key is wrong or the file is "
+                          "damaged.")
+            return False
+        del final_key
 
         # Read out the groups
         pos = 0
