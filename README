@@ -17,6 +17,11 @@ Features:
 ** Open, save and close KP-files correctly (works)
 ** Edit KP-files correctly and comfortable (planned)
 
+* Other features: 
+** An included secure password generator (planned)
+** Security features according to the KeePass 1.x standard like AES encryption (planned)
+** More security features like on-the-fly encryption are planned (planned)
+
 Dependencies:
 -------------
 
