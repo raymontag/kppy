@@ -5,8 +5,8 @@ A Python-module to provide an API to KeePass 1.x files.
 
 * License: GPL v3 or later
 * Author: Karsten-Kai König <kkoenig@posteo.de>
-* Website: http://www.nongnu.org/kppy/
 * Stable download: Will follow with stable release
+* Website: http://www.nongnu.org/kppy/
 * Bug tracker: http://savannah.nongnu.org/bugs/?group=kppy&func=additem
 * Git:
 ** Savannah: git://git.savannah.nongnu.org/kppy.git

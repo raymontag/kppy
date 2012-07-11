@@ -38,6 +38,7 @@ class StdGroup(object):
     - parent is the previous group
     - children is a list of all following groups
     - entries is a list of all entries of the group
+    - db is the database which holds the group
     
     """
 
@@ -55,10 +56,6 @@ class StdGroup(object):
 
     def set_title(self, title = None):
         """ This method just calls set_group_title of the holding db."""
-
-        if title is None:
-            raise KPError("Need a new title!")
-            return False
         
         if self.db.set_group_title(self.id_, title) is True:
             return True
@@ -134,7 +131,8 @@ class KPDB(object):
     Usage:
     
     You can load a KeePass database by the filename and the passphrase or
-    create an empty database (Not yet implemented).
+    create an empty database. It's also possible to open the database read-only
+    and to create a new one.
     
     Example:
     
@@ -149,6 +147,16 @@ class KPDB(object):
 
     def __init__(self, filepath=None, masterkey=None, read_only=False,
                  new = False):
+        """ Initialize a new or an existing database.
+
+        If a 'filepath' and a 'masterkey' is passed 'load' will try to open
+        a database. If 'True' is passed to 'read_only' the database will open
+        read-only. It's also possible to create a new one, just pass 'True' to
+        new. This will be ignored if a filepath and a masterkey is given this
+        will be ignored.
+        
+        """
+        
         self.groups = []
         self.read_only = read_only
         self.filepath = filepath
@@ -190,7 +198,11 @@ class KPDB(object):
             self.groups.append(group)
         
     def load(self):
-        """This method opens an existing database"""
+        """This method opens an existing database.
+
+        self.masterkey and self.filepath needs to be set.
+        
+        """
 
         if self.masterkey is None or self.filepath is None:
             raise KPError('Can only load an existing database!')
@@ -542,9 +554,10 @@ class KPDB(object):
     def create_group(self, title = None, parent_id = None):
         """This method creates a new group.
 
-            A group title is needed or no group will be created.
+        A group title is needed or no group will be created.
 
-            If an parent id is given, the group will be created as a sub-group.
+        If a parent id is given, the group will be created as a sub-group.
+        
         """
         
         if title is None:
@@ -602,7 +615,10 @@ class KPDB(object):
                             self._group_order.insert(pos2, (2,len(title)+1))
                             self._group_order.insert(pos2, (1,4))
                             break
-                            
+                elif i is self.groups[-1]:
+                    raise KPError("Given group doesn't exist")
+                    return False
+        
         self._num_groups += 1
 
         return True
@@ -610,7 +626,8 @@ class KPDB(object):
     def remove_group(self, id_ = None):
         """This method removes a group.
 
-            The group id is needed to remove the group.
+        The group id is needed to remove the group.
+        
         """
         
         if id_ is None:
@@ -619,18 +636,28 @@ class KPDB(object):
 
         pos1 = 0
         children = []
+        
+        # Search fo the given group
         for i in self.groups:
             if i.id_ == id_:
+                # If the group is found save all children's ids to delete them
+                # later
                 for j in i.children:
                     children.append(j.id_)
+                # Finally remove group
                 i.parent.children.remove(i)
                 del self.groups[pos1]
+                found = True
                 break
+            elif i is self.groups[-1]:
+                raise KPError("Given group doesn't exist")
+                return False
             pos1 += 1
-
+        
         pos2 = 0
         pos3 = 0
 
+        # Delete also group from group_order
         while True:
             t = self._group_order[pos3][0]
             if pos1 == pos2:
@@ -644,15 +671,19 @@ class KPDB(object):
 
         self._num_groups -= 1
 
+        # Delete all children
         if len(children) > 0:
             for i in children:
                 self.remove_group(i)
 
+        return True
+
     def set_group_title(self, id_ = None, title = None):
         """This method is used to change a group title.
 
-            Two arguments are needed: The id of the group whose title should
-            be changed and the new title.
+        Two arguments are needed: The id of the group whose title should
+        be changed and the new title.
+        
         """
         
         if id_ is None or title is None:
@@ -660,16 +691,25 @@ class KPDB(object):
             return False
 
         pos1 = 0
+        
+        # Search for group and update title
         for i in self.groups:
             pos1 += 1
             if i.id_ == id_:
                 i.title = title
                 break
+            elif i is self.groups[-1]:
+                raise KPError("Given group doesn't exist.")
+                return False
 
+        # Now update group order
         for i in self._group_order:
+            # Go through order until the entries of the given group are reached
             if i[0] == 0xFFFF:
                 pos1 -= 1
             if pos1 == 1 and i[0] == 0x0002:
+                # Remove tuple which holds information about title length and
+                # create a new one
                 index = self._group_order.index(i)
                 self._group_order.remove(i)
                 self._group_order.insert(index, (2, len(title)+1))
@@ -680,8 +720,9 @@ class KPDB(object):
     def set_group_image(self, id_ = None, image = None):
         """This method is used to change the image number if a group.
 
-            wo arguments are needed: The id of the group whose image should
-            be changed and the new image number.
+        Two arguments are needed: The id of the group whose image should
+        be changed and the new image number.
+        
         """
         
         if id_ is None or image is None:
@@ -691,8 +732,12 @@ class KPDB(object):
         for i in self.groups:
             if i.id_ == id_:
                 i.image = image
+                found = True
                 break
-
+            elif i is self.groups[-1]:
+                raise KPError("Given group doesn't exist.")
+                return False
+        
         return True
 
     def create_entry(self, group_id = None, title = "", image = 1, url = "",
@@ -700,23 +745,26 @@ class KPDB(object):
                      y = 2999, mon = 12, d = 28, h = 23, min_ = 59,
                      s = 59):
         """This method creates a new entry.
-            
-            The group id of the group which should hold the entry is needed.
-            
-            The must be at least one of the following parameters given:
-                - an entry title
-                - an url
-                - an username
-                - an password
-                - an comment
-            
-            It is possible to give an expire date in the following way:
-                - y is the year between 1 and 9999 inclusive
-                - mon is the month between 1 and 12
-                - d is a day in the given month
-                - h is a hour between 0 and 23
-                - min_ is a minute between 0 and 59
-                - s is a second between 0 and 59
+        
+        The group id of the group which should hold the entry is needed.
+        
+        There must be at least one of the following parameters given:
+            - an entry title
+            - an url
+            - an username
+            - an password
+            - an comment
+        
+        It is possible to give an expire date in the following way:
+            - y is the year between 1 and 9999 inclusive
+            - mon is the month between 1 and 12
+            - d is a day in the given month
+            - h is a hour between 0 and 23
+            - min_ is a minute between 0 and 59
+            - s is a second between 0 and 59
+
+        The special date 2999-12-28 23:59:59 means that entry expires never.
+        
         """
         
         # Search for the group.
@@ -847,6 +895,8 @@ class KPDB(object):
         return decrypted_content
 
     def _cbc_encrypt(self, content, final_key):
+        """This method encrypts the content."""
+
         aes = AES.new(final_key, AES.MODE_CBC, self._enc_iv)
         padding = (16 - len(content) % AES.block_size)
 
