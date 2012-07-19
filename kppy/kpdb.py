@@ -42,16 +42,17 @@ class StdGroup(object):
     
     """
 
-    def __init__(self, id_ = None, title = None, image = 1,
-                 level = 0, parent = None, children = [], entries = [], 
-                 db = None):
+    def __init__(self, id_ = None, title = None, image = 1, db = None,
+                 level = 0, parent = None, children = [], entries = []):
         self.id_ = id_
         self.title = title
         self.image = image
         self.level = level
         self.parent = parent
-        self.children = children
-        self.entries = entries
+        self.children = []
+        self.children.extend(children)
+        self.entries = []
+        self.entries.extend(entries)
         self.db = db
 
     def set_title(self, title = None):
@@ -192,9 +193,9 @@ class KPDB(object):
                           'additionally to open an existing database!')
         # Due to the design of KeePass, at least one group is needed.
         elif new:
-            self._group_order = [(1,4), (2,9), (7,4), (8,2), (0xFFFF, 0)]
-            group = StdGroup(1, 'Internet', 1, 0, self._root_group, [], [],
-                             self)
+            self._group_order = [("id", 1), (1,4), (2,9), (7,4), (8,2), (0xFFFF, 0)]
+            group = StdGroup(1, 'Internet', 1, self, 0, self._root_group, [], [])
+            self._root_group.children.append(group)
             self.groups.append(group)
         
     def load(self):
@@ -344,6 +345,10 @@ class KPDB(object):
                 return False
 
             #This is needed to write changes
+            if field_type == 0x0000:
+               self._group_order.append(("id", group.id_))
+            elif field_type == 0x0001 and self._group_order[-1][0] != 0x0000:
+               self._group_order.append(("id", group.id_))
             self._group_order.append((field_type, field_size))
 
         # Now the same with the entries
@@ -440,6 +445,9 @@ class KPDB(object):
 
         # First, read out all groups
         for field_type, field_size in self._group_order:
+            if field_type == "id":
+                continue
+
             # Get the packed bytes
             ret_save = self._save_group_field(field_type, field_size, 
                                                 self.groups[group])
@@ -551,13 +559,13 @@ class KPDB(object):
             raise KPError('Can\'t close a not opened file')
             return False
 
-    def create_group(self, title = None, parent_id = None):
+    def create_group(self, title = None, parent_id = None, image = 1):
         """This method creates a new group.
 
         A group title is needed or no group will be created.
 
         If a parent id is given, the group will be created as a sub-group.
-        
+
         """
         
         if title is None:
@@ -569,14 +577,15 @@ class KPDB(object):
             if i.id_ == id_:
                 id_ += 1
 
-        group = StdGroup(id_, title, image)
-
+        group = StdGroup(id_, title, image, self)
+        
         # If no parent is given, just append the new group at the end
         if parent_id is None:
             group.parent = self._root_group
             self._root_group.children.append(group)
             group.level = 0
             self.groups.append(group)
+            self._group_order.append(("id", id_))
             self._group_order.append((1,4))
             self._group_order.append((2,len(title)+1))
             self._group_order.append((7,4))
@@ -585,9 +594,7 @@ class KPDB(object):
         # If a parent is given it's more complex
         else:
             # First count through all groups...
-            pos1 = 0
             for i in self.groups:
-                pos1 += 1
                 # ...until parent is found
                 if i.id_ == parent_id:
                     # Append the group to the parent as a children and set
@@ -595,26 +602,27 @@ class KPDB(object):
                     i.children.append(group)
                     group.parent = i
                     group.level = i.level+1
-                    # Here is the counter pos1 needed to insert the new group
-                    # at the right position
-                    self.groups.insert(pos1, group)
+                    self.groups.insert(self.groups.index(i)+1, group)
 
                     # And now insert the field information at the right pos.
-                    pos2 = 0
+                    parent = False
+                    index = 0
                     for j in self._group_order:
-                        pos2 += 1
                         # The loop count through the order until the information
                         # of the parent are found. Then insert the new field
                         # information.
-                        if j[0] == 0xFFFF:
-                            pos1 -= 1
-                        if pos1 == 0:
-                            self._group_order.insert(pos2, (0xFFFF, 0))
-                            self._group_order.insert(pos2, (8,2))
-                            self._group_order.insert(pos2, (7,4))
-                            self._group_order.insert(pos2, (2,len(title)+1))
-                            self._group_order.insert(pos2, (1,4))
+                        if j[0] == "id" and j[1] == parent_id:
+                            parent = True
+                        elif j[0] == 0xFFFF and parent is True:
+                            self._group_order.insert(index+1, (0xFFFF, 0))
+                            self._group_order.insert(index+1, (8,2))
+                            self._group_order.insert(index+1, (7,4))
+                            self._group_order.insert(index+1, (2,len(title)+1))
+                            self._group_order.insert(index+1, (1,4))
+                            self._group_order.insert(index+1, ("id", id_))
                             break
+                        index += 1
+                    break
                 elif i is self.groups[-1]:
                     raise KPError("Given group doesn't exist")
                     return False
@@ -634,7 +642,6 @@ class KPDB(object):
             raise KPError("Need group id to remove a group")
             return False
 
-        pos1 = 0
         children = []
         
         # Search fo the given group
@@ -646,28 +653,25 @@ class KPDB(object):
                     children.append(j.id_)
                 # Finally remove group
                 i.parent.children.remove(i)
-                del self.groups[pos1]
-                found = True
+                self.groups.remove(i)
                 break
             elif i is self.groups[-1]:
                 raise KPError("Given group doesn't exist")
                 return False
-            pos1 += 1
-        
-        pos2 = 0
-        pos3 = 0
 
         # Delete also group from group_order
+        index = 0
         while True:
-            t = self._group_order[pos3][0]
-            if pos1 == pos2:
-                del self._group_order[pos3]
-                if t == 0xFFFF:
-                    break
+            if self._group_order[index][0] == "id" and \
+                self._group_order[index][1] == id_:
+                while True:
+                    t = self._group_order[index][0]
+                    del self._group_order[index]
+                    if t == 0xFFFF:
+                        break
+                break
             else:
-                pos3 += 1
-            if t == 0xFFFF:
-                pos2 += 1
+                index += 1
 
         self._num_groups -= 1
 
@@ -690,11 +694,8 @@ class KPDB(object):
             raise KPError("Need a group id and a new title!")
             return False
 
-        pos1 = 0
-        
         # Search for group and update title
         for i in self.groups:
-            pos1 += 1
             if i.id_ == id_:
                 i.title = title
                 break
@@ -703,11 +704,12 @@ class KPDB(object):
                 return False
 
         # Now update group order
+        found = False
         for i in self._group_order:
             # Go through order until the entries of the given group are reached
-            if i[0] == 0xFFFF:
-                pos1 -= 1
-            if pos1 == 1 and i[0] == 0x0002:
+            if i[0] == "id" and i[1] == id_:
+                found = True
+            if found is True and i[0] == 0x0002:
                 # Remove tuple which holds information about title length and
                 # create a new one
                 index = self._group_order.index(i)
