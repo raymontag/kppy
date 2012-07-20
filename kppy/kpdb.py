@@ -49,10 +49,8 @@ class StdGroup(object):
         self.image = image
         self.level = level
         self.parent = parent
-        self.children = []
-        self.children.extend(children)
-        self.entries = []
-        self.entries.extend(entries)
+        self.children = list(children)
+        self.entries = list(entries)
         self.db = db
 
     def set_title(self, title = None):
@@ -194,7 +192,7 @@ class KPDB(object):
         # Due to the design of KeePass, at least one group is needed.
         elif new:
             self._group_order = [("id", 1), (1,4), (2,9), (7,4), (8,2), (0xFFFF, 0)]
-            group = StdGroup(1, 'Internet', 1, self, 0, self._root_group, [], [])
+            group = StdGroup(1, 'Internet', 1, self, parent = self._root_group)
             self._root_group.children.append(group)
             self.groups.append(group)
         
@@ -574,9 +572,10 @@ class KPDB(object):
 
         id_ = 1
         for i in self.groups:
-            if i.id_ == id_:
-                id_ += 1
-
+            if i.id_ >= id_:
+                id_ = i.id_
+        
+        id_ += 1 
         group = StdGroup(id_, title, image, self)
         
         # If no parent is given, just append the new group at the end
@@ -637,7 +636,7 @@ class KPDB(object):
         The group id is needed to remove the group.
         
         """
-        
+
         if id_ is None:
             raise KPError("Need group id to remove a group")
             return False
@@ -675,8 +674,18 @@ class KPDB(object):
 
         self._num_groups -= 1
 
+        #from python cookbook
+        if children:
+            children.sort()
+            last = children[-1]
+            for i in range(len(children)-2, -1, -1):
+                if last == children[i]:
+                    del children[i]
+                else:
+                    last = children[i]
+
         # Delete all children
-        if len(children) > 0:
+        if children:
             for i in children:
                 self.remove_group(i)
 
