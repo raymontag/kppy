@@ -56,18 +56,12 @@ class StdGroup(object):
     def set_title(self, title = None):
         """ This method just calls set_group_title of the holding db."""
         
-        if self.db.set_group_title(self.id_, title) is True:
-            return True
-        else:
-            return False
+        return self.db.set_group_title(self.id_, title)
 
     def set_image(self, image = None):
         """This method just calls set_group_image of the holding db."""
 
-        if self.db.set_group_image(self.id_, image) is True:
-            return True
-        else:
-            return False
+        return self.db.set_group_image(self.id_, image)
 
 class StdEntry(object):
     """StdEntry represents a simple entry of a KeePass 1.x database.
