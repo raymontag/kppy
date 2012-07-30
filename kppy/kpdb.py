@@ -396,8 +396,11 @@ class KPDB(object):
                 return False
             if field_type == 0x0000:
                 self._entry_order.append(("uuid", entry.uuid))
-            elif self._entry_order:
-                if field_type == 0x0001 and self._entry_order[-1] != 0x0000:
+            elif field_type == 0x0001:
+                if self._entry_order:
+                    if not self._entry_order[-1] == 0x0000:
+                        self._entry_order.append(("uuid", entry.uuid))
+                else:
                     self._entry_order.append(("uuid", entry.uuid))
             self._entry_order.append((field_type, field_size))
 
@@ -537,8 +540,8 @@ class KPDB(object):
                 return False
             handler.write(header+encrypted_content)
             
-            if not path.isfile(filepath+'.lock'):
-                lock= open(filepath+'.lock', "w")
+            if not path.isfile(self.filepath+".lock"):
+                lock= open(filepath+".lock", "w")
                 lock.write('')
                 lock.close()
         finally:
