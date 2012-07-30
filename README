@@ -22,14 +22,14 @@ Features:
 
 * Other features: 
 ** An included secure password generator (planned)
-** Security features according to the KeePass 1.x standard like AES encryption (planned)
+** Security features according to the KeePass 1.x standard like Twofish encryption (planned)
 ** More security features like on-the-fly encryption are planned (planned)
 
 Dependencies:
 -------------
 
 * Python 3
-* PyCrypto's py3k branch
+* PyCrypto's py3k branch (https://github.com/dlitz/pycrypto/zipball/py3k)
 
 Copyright (C) 2012 Karsten-Kai König <kkoenig@posteo.de>
 
