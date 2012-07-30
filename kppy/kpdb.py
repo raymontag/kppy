@@ -18,7 +18,7 @@ kppy.  If not, see <http://www.gnu.org/licenses/>.
 
 import struct
 from datetime import datetime
-from os import remove
+from os import remove, path
 
 from Crypto import Random
 from Crypto.Hash import SHA256
@@ -339,8 +339,9 @@ class KPDB(object):
             #This is needed to write changes
             if field_type == 0x0000:
                self._group_order.append(("id", group.id_))
-            elif field_type == 0x0001 and self._group_order[-1][0] != 0x0000:
-               self._group_order.append(("id", group.id_))
+            elif self._group_order:
+                if field_type == 0x0001 and self._group_order[-1][0] != 0x0000:
+                    self._group_order.append(("id", group.id_))
             self._group_order.append((field_type, field_size))
 
         # Now the same with the entries
@@ -378,11 +379,11 @@ class KPDB(object):
                     del decrypted_content
                     del crypted_content
                     return False
-                
+
                 entry = StdEntry()
                 cur_entry += 1
             
-            if field_type == 0x0000 or field_type == 0x0001:
+            if field_type == 0x0000:
                 self._unsupported_e_fields.append(decrypted_content[:field_size])
 
             decrypted_content = decrypted_content[field_size:]
@@ -393,7 +394,11 @@ class KPDB(object):
                 del decrypted_content
                 del crypted_content
                 return False
-
+            if field_type == 0x0000:
+                self._entry_order.append(("uuid", entry.uuid))
+            elif self._entry_order:
+                if field_type == 0x0001 and self._entry_order[-1] != 0x0000:
+                    self._entry_order.append(("uuid", entry.uuid))
             self._entry_order.append((field_type, field_size))
 
         if not self._create_group_tree(levels):
@@ -470,6 +475,8 @@ class KPDB(object):
 
         # Same with entries
         for field_type, field_size in self._entry_order:
+            if field_type == "uuid":
+                continue
             ret_save = self._save_entry_field(field_type, field_size,
                                                 self._entries[entry])
 
@@ -480,7 +487,7 @@ class KPDB(object):
             content += struct.pack('<H', field_type)
             content += struct.pack('<I', field_size)
 
-            if field_type == 0x0000 or field_type == 0x0001:
+            if field_type == 0x0000:
                 content += self._unsupported_e_fields[pos]
                 pos += 1
             elif not field_type == 0xFFFF:
@@ -492,7 +499,7 @@ class KPDB(object):
         self._final_randomseed = Random.get_random_bytes(16)
         self._enc_iv = Random.get_random_bytes(16)
         sha_obj = SHA256.new()
-        sha_obj.update(content)
+        sha_obj.update(bytes(content))
         self._contents_hash = sha_obj.digest()
         del sha_obj
 
@@ -519,25 +526,23 @@ class KPDB(object):
         
         # ...and write it out
         try:
-            if filepath is None:
-                handler = open(self.filepath, 'wb')
+            if filepath is not None:
+                handler = open(filepath, "wb")
+                if self.filepath is None:
+                    self.filepath = filepath
+            elif filepath is None and self.filepath is not None:
+                handler = open(self.filepath, "wb")
             else:
-                handler = open(filepath, 'wb')
+                raise KPError("Need a filepath.")
+                return False
             handler.write(header+encrypted_content)
-        except IOError as e:
-            raise KPError("Error while opening or writing the file")
-            handler.close
-            return False
+            
+            if not path.isfile(filepath+'.lock'):
+                lock= open(filepath+'.lock', "w")
+                lock.write('')
+                lock.close()
         finally:
             handler.close
-
-        if self.filepath is None:
-            self.filepath = filepath
-            try:
-                handler = open(self.filepath+'.lock', 'w')
-                handler.write('')
-            finally:
-                handler.close()
 
         return True
 
@@ -636,14 +641,17 @@ class KPDB(object):
             return False
 
         children = []
-        
+        entries = []
+
         # Search fo the given group
         for i in self.groups:
             if i.id_ == id_:
-                # If the group is found save all children's ids to delete them
+                # If the group is found save all children's and entries' ids to delete them
                 # later
                 for j in i.children:
                     children.append(j.id_)
+                for j in i.entries:
+                    entries.append(j.uuid)
                 # Finally remove group
                 i.parent.children.remove(i)
                 self.groups.remove(i)
@@ -667,7 +675,8 @@ class KPDB(object):
                 index += 1
 
         self._num_groups -= 1
-
+        
+        '''
         #from python cookbook
         if children:
             children.sort()
@@ -677,11 +686,12 @@ class KPDB(object):
                     del children[i]
                 else:
                     last = children[i]
-
-        # Delete all children
-        if children:
-            for i in children:
-                self.remove_group(i)
+        '''
+        # Delete all children and entries
+        for i in children:
+            self.remove_group(i)
+        for i in entries:
+            self.remove_entry(i)     
 
         return True
 
@@ -708,6 +718,7 @@ class KPDB(object):
 
         # Now update group order
         found = False
+        index = 0
         for i in self._group_order:
             # Go through order until the entries of the given group are reached
             if i[0] == "id" and i[1] == id_:
@@ -715,11 +726,10 @@ class KPDB(object):
             if found is True and i[0] == 0x0002:
                 # Remove tuple which holds information about title length and
                 # create a new one
-                index = self._group_order.index(i)
-                self._group_order.remove(i)
+                del self._group_order[index]
                 self._group_order.insert(index, (2, len(title)+1))
                 break
-
+            index += 1
         return True
 
     def set_group_image(self, id_ = None, image = None):
@@ -799,6 +809,9 @@ class KPDB(object):
                           "entry.")
             return False
         
+        uuid = Random.get_random_bytes(16)
+        self._entry_order.append(("uuid", uuid))
+        self._entry_order.append((0x0001, 16))
         self._entry_order.append((0x0002, 4))
         self._entry_order.append((0x0003, 4))
         self._entry_order.append((0x0004, len(title)+1))
@@ -817,51 +830,47 @@ class KPDB(object):
                          datetime.now().replace(microsecond = 0),
                          datetime.now().replace(microsecond = 0),
                          datetime.now().replace(microsecond = 0),
-                         datetime(y, mon, d, h, min_, s))
+                         datetime(y, mon, d, h, min_, s),
+                         uuid)
         self._entries.append(entry)
         group.entries.append(entry)
         self._num_entries += 1
         
         return True
 
-    def remove_entry(self, group_id = None, index = None):
+    def remove_entry(self, uuid = None):
         """This method can remove entries.
         
-            The id of the group which holds the entry is needed as well as the
-            index of the entry in the entries list attribute of the given group.
+            The uuid of the entry is needed.
         """
         
-        if group_id == None or index == None:
-            raise KPError("Need a group id and an index.")
+        if uuid is None:
+            raise KPError("Need an uuid.")
             return False
         
-        for i in self.groups:
-            if i.id_ == group_id:
-                if index > len(i.entries)-1:
-                    raise KPError("No entry with given entry exists.")
-                    return False
-                temp = i.entries[index]
-                del i.entries[index]
-                pos1 = self._entries.index(temp)
-                self._entries.remove(temp)
-                del temp
-            elif i is self.groups[-1]:
-                raise KPError("Given group doesn't exist")
+        for i in self._entries:
+            if uuid == i.uuid:
+                i.group.entries.remove(i)
+                self._entries.remove(i)
+                break
+            elif i is self._entries[-1]:
+                raise KPError("Given entry doesn't exist.")
                 return False
         
-        pos2 = 0
-        pos3 = 0
-        while True:
-            t = self._entry_order[pos3][0]
-            if pos1 == pos2:
-                del self._entry_order[pos3]
-                if t == 0xFFFF:
-                    break
-            else:
-                pos3 += 1
-            if t == 0xFFFF:
-                pos2 += 1
         
+        index = 0
+        while True:
+            if self._entry_order[index][0] == "uuid" and \
+                self._entry_order[index][1] == uuid:
+                while True:
+                    t = self._entry_order[index][0]
+                    del self._entry_order[index]
+                    if t == 0xFFFF:
+                        break
+                break
+            else:
+                index += 1
+
         self._num_entries -= 1
         
         return True
@@ -970,8 +979,7 @@ class KPDB(object):
             # Ignored
             pass
         elif field_type == 0x0001:
-            # Later
-            pass
+            entry.uuid = decrypted_content[:16]
         elif field_type == 0x0002:
             entry.group_id = struct.unpack('<I', decrypted_content[:4])[0]
         elif field_type == 0x0003:
@@ -1016,7 +1024,7 @@ class KPDB(object):
                                        decrypted_content[:field_size-1])[0],
                                        'utf-8')
         elif field_type == 0x000E:
-            entry.binary = decrypted_content[:field_size-1]
+            entry.binary = decrypted_content[:field_size]
         elif field_type == 0xFFFF:
             pass
         else:
@@ -1141,8 +1149,7 @@ class KPDB(object):
             # Ignored
             pass
         elif field_type == 0x0001:
-            # Later
-            pass
+            return entry.uuid
         elif field_type == 0x0002:
             return struct.pack('<I', entry.group_id)
         elif field_type == 0x0003:
@@ -1168,7 +1175,7 @@ class KPDB(object):
         elif field_type == 0x000D:
             return (entry.binary_desc+'\0').encode()
         elif field_type == 0x000E:
-            return entry.binary+'\0'.encode()
+            return entry.binary
         elif field_type == 0xFFFF:
             pass
         else:
