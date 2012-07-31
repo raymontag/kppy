@@ -74,7 +74,8 @@ class StdEntry(object):
                  image = 1, title = None, url = None, username = None,
                  password = None, comment = None, 
                  creation = None, last_mod = None, last_access = None, 
-                 expire = None, uuid = None, binary_desc = None, binary = None):
+                 expire = None, uuid = None, binary_desc = None,
+                 binary = None):
         self.uuid = uuid
         self.group_id = group_id
         self.group = group
@@ -90,6 +91,41 @@ class StdEntry(object):
         self.last_access = last_access
         self.expire = expire
         self.binary = binary
+
+    def set_title(self, title = None):
+        """ This method just calls set_entry_title of the holding db."""
+        
+        self.group.db.set_entry_title(self.uuid, title)
+        
+    def set_image(self, image = None):
+        """ This method just calls set_entry_image of the holding db."""
+        
+        return self.group.db.set_entry_image(self.uuid, image)
+        
+    def set_url(self, url = None):
+        """ This method just calls set_entry_url of the holding db."""
+        
+        return self.group.db.set_entry_url(self.uuid, url)
+        
+    def set_username(self, username = None):
+        """ This method just calls set_entry_username of the holding db."""
+        
+        return self.group.db.set_entry_username(self.uuid, username)
+        
+    def set_password(self, password = None):
+        """ This method just calls set_entry_password of the holding db."""
+        
+        return self.group.db.set_entry_password(self.uuid, password)
+        
+    def set_comment(self, comment = None):
+        """ This method just calls set_entry_comment of the holding db."""
+        
+        return self.group.db.set_entry_comment(self.uuid, comment)
+        
+    def set_expire(self, y = 2999, mon = 12, d = 28, h = 23, min_ = 59, s = 59):
+        """ This method just calls set_entry_expie of the holding db."""
+        
+        return self.group.db.set_entry_expire(self.uuid, y, mon, d, h, min_, s)
 
 class KPError(Exception):
     """KPError is a exception class to handle exception raised by KPDB.
@@ -185,7 +221,8 @@ class KPDB(object):
                           'additionally to open an existing database!')
         # Due to the design of KeePass, at least one group is needed.
         elif new:
-            self._group_order = [("id", 1), (1,4), (2,9), (7,4), (8,2), (0xFFFF, 0)]
+            self._group_order = [("id", 1), (1,4), (2,9), (7,4), (8,2),
+                                 (0xFFFF, 0)]
             group = StdGroup(1, 'Internet', 1, self, parent = self._root_group)
             self._root_group.children.append(group)
             self.groups.append(group)
@@ -408,7 +445,7 @@ class KPDB(object):
             raise KPError('Invalid group tree.')
             del decrypted_content
             del crypted_content
-            return false
+            return False
 
         del decrypted_content
         del crypted_content
@@ -609,9 +646,9 @@ class KPDB(object):
                     parent = False
                     index = 0
                     for j in self._group_order:
-                        # The loop count through the order until the information
-                        # of the parent are found. Then insert the new field
-                        # information.
+                        # The loop count through the order until the
+                        # information of the parent are found. Then insert the 
+                        # new field information.
                         if j[0] == "id" and j[1] == parent_id:
                             parent = True
                         elif j[0] == 0xFFFF and parent is True:
@@ -622,6 +659,9 @@ class KPDB(object):
                             self._group_order.insert(index+1, (1,4))
                             self._group_order.insert(index+1, ("id", id_))
                             break
+                        elif index+1 == len(self._group_order):
+                            raise KPError("Didn't find parent in group order")
+                            return False
                         index += 1
                     break
                 elif i is self.groups[-1]:
@@ -649,8 +689,8 @@ class KPDB(object):
         # Search fo the given group
         for i in self.groups:
             if i.id_ == id_:
-                # If the group is found save all children's and entries' ids to delete them
-                # later
+                # If the group is found save all children's and entries' ids to
+                #  delete them later
                 for j in i.children:
                     children.append(j.id_)
                 for j in i.entries:
@@ -674,8 +714,10 @@ class KPDB(object):
                     if t == 0xFFFF:
                         break
                 break
-            else:
-                index += 1
+            elif index+1 == len(self._group_order):
+                raise KPError("Didnt' find group in group order")
+                return False
+            index += 1
 
         self._num_groups -= 1
         
@@ -706,7 +748,8 @@ class KPDB(object):
         
         """
         
-        if id_ is None or title is None:
+        if id_ is None or type(id_) is not int or title is None or \
+            type(title) is not str:
             raise KPError("Need a group id and a new title!")
             return False
 
@@ -726,13 +769,23 @@ class KPDB(object):
             # Go through order until the entries of the given group are reached
             if i[0] == "id" and i[1] == id_:
                 found = True
-            if found is True and i[0] == 0x0002:
+            elif found is True and i[0] == 0x0002:
                 # Remove tuple which holds information about title length and
                 # create a new one
                 del self._group_order[index]
                 self._group_order.insert(index, (2, len(title)+1))
                 break
+            elif found is True and (i[0] == 0xFFFF or \
+                i is self._group_order[-1]):
+                raise KPError("Given group hasn't an title. Something went "
+                              "very wrong.")
+                return False
+            elif found is False and index + 1 == len(self._group_order):
+                raise KPError("Given group doesn't exist in group order. "
+                              "Something went very wrong.")
+                return False
             index += 1
+    
         return True
 
     def set_group_image(self, id_ = None, image = None):
@@ -743,14 +796,13 @@ class KPDB(object):
         
         """
         
-        if id_ is None or image is None:
+        if id_ is None or image is None or type(image) is not int:
             raise KPError("Need a group id and an image number!")
             return False
 
         for i in self.groups:
             if i.id_ == id_:
                 i.image = image
-                found = True
                 break
             elif i is self.groups[-1]:
                 raise KPError("Given group doesn't exist.")
@@ -770,8 +822,8 @@ class KPDB(object):
             - an entry title
             - an url
             - an username
-            - an password
-            - an comment
+            - a password
+            - a comment
         
         It is possible to give an expire date in the following way:
             - y is the year between 1 and 9999 inclusive
@@ -844,7 +896,8 @@ class KPDB(object):
     def remove_entry(self, uuid = None):
         """This method can remove entries.
         
-            The uuid of the entry is needed.
+        The uuid of the entry is needed.
+        
         """
         
         if uuid is None:
@@ -871,12 +924,320 @@ class KPDB(object):
                     if t == 0xFFFF:
                         break
                 break
-            else:
-                index += 1
+            elif index+1 == len(self._entry_order):
+                raise KPError("Didn't find entry's information in entry order.")
+                return False
+            index += 1
 
         self._num_entries -= 1
         
         return True
+
+    def set_entry_comment(self, uuid = None, comment = None):
+        """This method is used to change an entry comment.
+
+        Two arguments are needed: The uuid of the entry whose comment should
+        be changed and the new comment.
+        
+        """
+
+        if uuid is None or comment is None or type(comment) is not str:
+            raise KPError("Need an uuid and a new comment")
+            return False
+
+        for i in self._entries:
+            if i.uuid == uuid:
+                if i.password == "" and i.title == "" and i.url == "" and \
+                    i.username == "" and comment == "":
+                    raise KPError("There must be at least one of the following" 
+                                  "arguments given:\n\t- an entry title\n"
+                                  "\t- an url\n"
+                                  "\t- an username\n"
+                                  "\t- a password\n"
+                                  "\t- a comment\n")
+                    return False
+                i.comment = comment
+                break
+            elif i is self._entries[-1]:
+                raise KPError("Given entry doesn't exist.")
+                return False
+
+        index = 0
+        found = False
+        for i in self._entry_order:
+            if i[0] == "uuid" and i[1] == uuid:
+                found = True
+            elif found is True and i[0] == 0x0008:
+                del self._entry_order[index]
+                self._entry_order.insert(index, (0x0008, len(comment)+1))
+                break
+            elif found is True and (i[0] == 0xFFFF or \
+                i is self._entry_order[-1]):
+                raise KPError("Given entry hasn't an comment. Something went "
+                              "very wrong.")
+                return False
+            elif found is False and index + 1 == len(self._entry_order):
+                raise KPError("Given entry doesn't exist in group order. "
+                              "Something went very wrong.")
+                return False
+            index += 1
+
+    def set_entry_title(self, uuid = None, title = None):
+        """This method is used to change an entry title.
+
+        Two arguments are needed: The uuid of the entry whose title should
+        be changed and the new title.
+        
+        """
+
+        if uuid is None or title is None or type(title) is not str:
+            raise KPError("Need an uuid and a new title")
+            return False
+
+        for i in self._entries:
+            if i.uuid == uuid:
+                if i.password == "" and title == "" and i.url == "" and \
+                    i.username == "" and i.comment == "":
+                    raise KPError("There must be at least one of the following" 
+                                  "arguments given:\n\t- an entry title\n"
+                                  "\t- an url\n"
+                                  "\t- an username\n"
+                                  "\t- a password\n"
+                                  "\t- a comment\n")
+                    return False
+                i.title = title
+                break
+            elif i is self._entries[-1]:
+                raise KPError("Given entry doesn't exist.")
+                return False
+
+        index = 0
+        found = False
+        for i in self._entry_order:
+            if i[0] == "uuid" and i[1] == uuid:
+                found = True
+            elif found is True and i[0] == 0x0004:
+                del self._entry_order[index]
+                self._entry_order.insert(index, (0x0004, len(title)+1))
+                break
+            elif found is True and (i[0] == 0xFFFF or \
+                i is self._entry_order[-1]):
+                raise KPError("Given entry hasn't an title. Something went "
+                              "very wrong.")
+                return False
+            elif found is False and index + 1 == len(self._entry_order):
+                raise KPError("Given entry doesn't exist in group order. "
+                              "Something went very wrong.")
+                return False
+            index += 1
+
+    def set_entry_password(self, uuid = None, password = None):
+        """This method is used to change an entry password.
+
+        Two arguments are needed: The uuid of the entry whose password should
+        be changed and the new password.
+        
+        """
+
+        if uuid is None or password is None or type(password) is not str:
+            raise KPError("Need an uuid and a new password")
+            return False
+
+        for i in self._entries:
+            if i.uuid == uuid:
+                if password == "" and i.title == "" and i.url == "" and \
+                    i.username == "" and i.comment == "":
+                    raise KPError("There must be at least one of the following" 
+                                  "arguments given:\n\t- an entry title\n"
+                                  "\t- an url\n"
+                                  "\t- an username\n"
+                                  "\t- a password\n"
+                                  "\t- a comment\n")
+                    return False
+                i.password = password
+                break
+            elif i is self._entries[-1]:
+                raise KPError("Given entry doesn't exist.")
+                return False
+
+        index = 0
+        found = False
+        for i in self._entry_order:
+            if i[0] == "uuid" and i[1] == uuid:
+                found = True
+            elif found is True and i[0] == 0x0007:
+                del self._entry_order[index]
+                self._entry_order.insert(index, (0x0007, len(password)+1))
+                break
+            elif found is True and (i[0] == 0xFFFF or \
+                i is self._entry_order[-1]):
+                raise KPError("Given entry hasn't an password. Something went "
+                              "very wrong.")
+                return False
+            elif found is False and index + 1 == len(self._entry_order):
+                raise KPError("Given entry doesn't exist in group order. "
+                              "Something went very wrong.")
+                return False
+            index += 1
+
+    def set_entry_url(self, uuid = None, url = None):
+        """This method is used to change an entry url.
+
+        Two arguments are needed: The uuid of the entry whose url should
+        be changed and the new url.
+        
+        """
+
+        if uuid is None or url is None or type(url) is not str:
+            raise KPError("Need an uuid and a new url")
+            return False
+
+        for i in self._entries:
+            if i.uuid == uuid:
+                if i.password == "" and i.title == "" and url == "" and \
+                    i.username == "" and i.comment == "":
+                    raise KPError("There must be at least one of the following" 
+                                  "arguments given:\n\t- an entry title\n"
+                                  "\t- an url\n"
+                                  "\t- an username\n"
+                                  "\t- a password\n"
+                                  "\t- a comment\n")
+                    return False
+                i.url = url
+                break
+            elif i is self._entries[-1]:
+                raise KPError("Given entry doesn't exist.")
+                return False
+
+        index = 0
+        found = False
+        for i in self._entry_order:
+            if i[0] == "uuid" and i[1] == uuid:
+                found = True
+            elif found is True and i[0] == 0x0005:
+                del self._entry_order[index]
+                self._entry_order.insert(index, (0x0005, len(url)+1))
+                break
+            elif found is True and (i[0] == 0xFFFF or \
+                i is self._entry_order[-1]):
+                raise KPError("Given entry hasn't an url. Something went "
+                              "very wrong.")
+                return False
+            elif found is False and index + 1 == len(self._entry_order):
+                raise KPError("Given entry doesn't exist in group order. "
+                              "Something went very wrong.")
+                return False
+            index += 1
+
+    def set_entry_username(self, uuid = None, username = None):
+        """This method is used to change an entry username.
+
+        Two arguments are needed: The uuid of the entry whose username should
+        be changed and the new username.
+        
+        """
+
+        if uuid is None or username is None or type(username) is not str:
+            raise KPError("Need an uuid and a new username")
+            return False
+
+        for i in self._entries:
+            if i.uuid == uuid:
+                if i.password == "" and i.title == "" and i.url == "" and \
+                    username == "" and i.comment == "":
+                    raise KPError("There must be at least one of the following" 
+                                  "arguments given:\n\t- an entry title\n"
+                                  "\t- an url\n"
+                                  "\t- an username\n"
+                                  "\t- a password\n"
+                                  "\t- a comment\n")
+                    return False
+                i.username = username
+                break
+            elif i is self._entries[-1]:
+                raise KPError("Given entry doesn't exist.")
+                return False
+
+        index = 0
+        found = False
+        for i in self._entry_order:
+            if i[0] == "uuid" and i[1] == uuid:
+                found = True
+            elif found is True and i[0] == 0x0006:
+                del self._entry_order[index]
+                self._entry_order.insert(index, (0x0006, len(username)+1))
+                break
+            elif found is True and (i[0] == 0xFFFF or \
+                i is self._entry_order[-1]):
+                raise KPError("Given entry hasn't an username. Something went "
+                              "very wrong.")
+                return False
+            elif found is False and index + 1 == len(self._entry_order):
+                raise KPError("Given entry doesn't exist in group order. "
+                              "Something went very wrong.")
+                return False
+            index += 1
+
+    def set_entry_image(self, uuid = None, image = None):
+        """This method is used to change the image number of an entry.
+
+        Two arguments are needed: The id of the group whose image should
+        be changed and the new image number.
+        
+        """
+        
+        if uuid is None or image is None or type(image) is not int:
+            raise KPError("Need an entry uuid and an image number!")
+            return False
+
+        for i in self._entries:
+            if i.uuid == uuid:
+                i.image = image
+                break
+            elif i is self.groups[-1]:
+                raise KPError("Given entry doesn't exist.")
+                return False
+        
+        return True
+
+    def set_entry_expire(self, uuid = None, y = 2999, mon = 12, d = 28, h = 23,
+                         min_ = 59, s = 59):
+        """This method is used to change the expire date of an entry.
+
+            - y is the year between 1 and 9999 inclusive
+            - mon is the month between 1 and 12
+            - d is a day in the given month
+            - h is a hour between 0 and 23
+            - min_ is a minute between 0 and 59
+            - s is a second between 0 and 59
+
+        The special date 2999-12-28 23:59:59 means that entry expires never. If
+        only an uuid is given the expire date will set to this one.
+        
+        """
+
+        if uuid is None:
+            raise KPError("Need an uuid")
+            return False
+        
+        if y > 9999 or y < 1 or mon > 12 or mon < 1 or d > 31 or d < 1 or \
+            h > 23 or h < 0 or min_ > 59 or min_ < 0 or s > 59 or s < 0:
+            raise KPError("No legal date")
+            return False
+        
+        if ((mon == 1 or mon == 3 or mon == 5 or mon == 7 or mon == 8 or \
+             mon == 10 or mon == 12) and d > 31) or ((mon == 4 or mon == 6 or \
+             mon == 9 or mon == 11) and d > 30) or (mon == 2 and d > 28):
+            raise KPError("Given day doesn't exist in given month")
+            return False
+
+        for i in self._entries:
+            if uuid == i.uuid:
+                i.expire = datetime(y, mon, d, h, min_, s)
+                return True
+            elif i is self._entries[-1]:
+                raise KPError("Given entry doesn't exist.")
+                return False
 
     def _transform_key(self):
         """This method creates the key to decrypt the database"""
@@ -1071,7 +1432,7 @@ class KPDB(object):
     def _create_group_tree(self, levels):
         """This method creates a group tree"""
 
-        if levels[0] != 0: return false;
+        if levels[0] != 0: return False;
         
         for i in range(len(self.groups)):
             if(levels[i] == 0):
@@ -1083,13 +1444,13 @@ class KPDB(object):
             j = i-1
             while j >= 0:
                 if levels[j] < levels[i]:
-                    if levels[i]-levels[j] != 1: return false;
+                    if levels[i]-levels[j] != 1: return False;
                     
                     self.groups[i].parent = self.groups[j]
                     self.groups[i].index = len(self.groups[j].children)
                     self.groups[i].parent.children.append(self.groups[i])
                     break
-                if j == 0: return false;
+                if j == 0: return False;
                 j -= 1
             
         for e in range(len(self._entries)):
@@ -1144,6 +1505,7 @@ class KPDB(object):
             pass
         else:
             return False
+        return True
 
     def _save_entry_field(self, field_type, field_size, entry):
         """This group packs a entry field"""
@@ -1183,3 +1545,4 @@ class KPDB(object):
             pass
         else:
             return False
+        return True
