@@ -63,11 +63,30 @@ class StdGroup(object):
 
         return self.db.set_group_image(self.id_, image)
 
+    def move_group(self, index = None, parent = None):
+        """This method just calls move_group of the holding db."""
+
+        return self.db.move_group(self.id_, index, parent)
+
 class StdEntry(object):
     """StdEntry represents a simple entry of a KeePass 1.x database.
     
     Attributes:
-    
+        - uuid is an "Universal Unique ID", that is it identifies the entry
+        - group_id is the id of the holding group
+        - group is the holding StdGroup instance
+        - image is the image number
+        - title is the entry title
+        - url is an url to a website where the login information of this entry
+          can be used
+        - username is an username
+        - password is the password
+        - binary_desc is the description of meta-data which binary holds
+        - creation is the creation date of this entry
+        - last_mod is the date of the last modification
+        - last_access is the date of the last access
+        - expire is the date when the entry should expire
+        
     """
 
     def __init__(self, group_id = None, group = None,
@@ -123,9 +142,14 @@ class StdEntry(object):
         return self.group.db.set_entry_comment(self.uuid, comment)
         
     def set_expire(self, y = 2999, mon = 12, d = 28, h = 23, min_ = 59, s = 59):
-        """ This method just calls set_entry_expie of the holding db."""
+        """ This method just calls set_entry_expire of the holding db."""
         
         return self.group.db.set_entry_expire(self.uuid, y, mon, d, h, min_, s)
+
+    def move_entry(self, id_ = None):
+        """This method just calls move_entry of the holding db."""
+
+        return self.group.db.move_entry(self.uuid, id_)
 
 class KPError(Exception):
     """KPError is a exception class to handle exception raised by KPDB.
@@ -441,8 +465,7 @@ class KPDB(object):
                     self._entry_order.append(("uuid", entry.uuid))
             self._entry_order.append((field_type, field_size))
 
-        if not self._create_group_tree(levels):
-            raise KPError('Invalid group tree.')
+        if self._create_group_tree(levels) is False:
             del decrypted_content
             del crypted_content
             return False
@@ -810,6 +833,80 @@ class KPDB(object):
         
         return True
 
+    def move_group(self, id_ = None,  index = None, parent = None):
+        """Move group to a specific index in self.group.
+
+        A valid group id and a valid index must be given. Index starts at 0 and
+        ends at len(self.groups). Special index -1 means that the group will
+        append at the end if self.groups.
+
+        WARNING: If you parse a parent group make sure that no invalid group
+        tree is going to created. For further details watch the tutorial.
+        """
+
+        if id_ is None or type(id_) is not int or index is None or \
+            type(index) is not int or index < -1 or index >= len(self.groups):
+            raise KPError("A valid group id and a valid index must be given.")
+            return False
+
+        if parent is None:
+            parent = self._root_group
+
+        for i in self.groups:
+            if id_ == i.id_:
+                i.parent.children.remove(i)
+                i.parent = parent
+                i.parent.children.append(i)
+                if parent is self._root_group:
+                    i.level = 0
+                else:
+                    i.level = i.parent.level + 1
+                self.groups.remove(i)
+                if index == -1:
+                    self.groups.append(i)
+                else:
+                    self.groups.insert(index, i)
+                reverse_children = []
+                for j in i.children:
+                    reverse_children.insert(0, j)
+                group = i
+                break
+            elif i is self.groups[-1]:
+                raise KPError("Didn't find given group.")
+                return False
+
+        index2 = 0
+        index3 = 0
+        index4 = 0
+        for i in self._group_order:
+            if i[0] == "id" and i[1] == id_:
+                for j in self._group_order:
+                    if index3 == index:
+                        break
+                    elif j[0] == 0xFFFF:
+                        index3 += 1
+                    index4 += 1
+                while self._group_order[index2][0] != 0xFFFF:
+                    self._group_order.insert(index4,
+                                             self._group_order[index2])
+                    del self._group_order[index2+1]
+                    index2 += 1
+                    index4 += 1
+                self._group_order.insert(index4,
+                                         self._group_order[index2])
+                del self._group_order[index2+1]
+                break
+            elif index2+1 >= len(self._group_order):
+                raise KPError("Given group doesn't exist in group order. "
+                              "Something went very wrong.")
+            index2 += 1
+
+        for i in reverse_children:
+            if index == -1:
+                self.move_group(i.id_, -1, group)
+            else:
+                self.move_group(i.id_, index+1, group)
+
     def create_entry(self, group_id = None, title = "", image = 1, url = "",
                      username = "", password = "", comment = "",
                      y = 2999, mon = 12, d = 28, h = 23, min_ = 59,
@@ -957,6 +1054,7 @@ class KPDB(object):
                                   "\t- a comment\n")
                     return False
                 i.comment = comment
+                i.last_mod = datetime.now().replace(microsecond = 0)
                 break
             elif i is self._entries[-1]:
                 raise KPError("Given entry doesn't exist.")
@@ -1005,6 +1103,7 @@ class KPDB(object):
                                   "\t- a password\n"
                                   "\t- a comment\n")
                     return False
+                i.last_mod = datetime.now().replace(microsecond = 0)
                 i.title = title
                 break
             elif i is self._entries[-1]:
@@ -1054,6 +1153,7 @@ class KPDB(object):
                                   "\t- a password\n"
                                   "\t- a comment\n")
                     return False
+                i.last_mod = datetime.now().replace(microsecond = 0)
                 i.password = password
                 break
             elif i is self._entries[-1]:
@@ -1103,6 +1203,7 @@ class KPDB(object):
                                   "\t- a password\n"
                                   "\t- a comment\n")
                     return False
+                i.last_mod = datetime.now().replace(microsecond = 0)
                 i.url = url
                 break
             elif i is self._entries[-1]:
@@ -1152,6 +1253,7 @@ class KPDB(object):
                                   "\t- a password\n"
                                   "\t- a comment\n")
                     return False
+                i.last_mod = datetime.now().replace(microsecond = 0)
                 i.username = username
                 break
             elif i is self._entries[-1]:
@@ -1193,6 +1295,7 @@ class KPDB(object):
         for i in self._entries:
             if i.uuid == uuid:
                 i.image = image
+                i.last_mod = datetime.now().replace(microsecond = 0)
                 break
             elif i is self.groups[-1]:
                 raise KPError("Given entry doesn't exist.")
@@ -1216,7 +1319,7 @@ class KPDB(object):
         
         """
 
-        if uuid is None:
+        if uuid is None or type(uuid) is not bytes:
             raise KPError("Need an uuid")
             return False
         
@@ -1234,11 +1337,39 @@ class KPDB(object):
         for i in self._entries:
             if uuid == i.uuid:
                 i.expire = datetime(y, mon, d, h, min_, s)
+                i.last_mod = datetime.now().replace(microsecond = 0)
                 return True
             elif i is self._entries[-1]:
                 raise KPError("Given entry doesn't exist.")
                 return False
 
+    def move_entry(self, uuid = None, id_ = None):
+        """Move an entry to another group.
+
+        An entry uuid and a group id is needed.
+        """
+
+        if uuid is None or id_ is None or type(uuid) is not bytes or \
+            type(id_) is not int:
+            raise KPError("Need a valid entry uuid and a valid group id")
+            return False
+
+        for i in self._entries:
+            if i.uuid == uuid:
+                entry = i
+            elif i is self._entries[-1]:
+                raise KPError("No entry found for given uuid")
+                return False
+        
+        for i in self.groups:
+            if i.id_ is id_:
+                entry.group.entries.remove(entry)
+                i.entries.append(entry)
+                entry.group_id = id_
+            elif i is self.groups[-1]:
+                raise KPError("No group found for given id")
+                return False
+                
     def _transform_key(self):
         """This method creates the key to decrypt the database"""
 
@@ -1432,7 +1563,9 @@ class KPDB(object):
     def _create_group_tree(self, levels):
         """This method creates a group tree"""
 
-        if levels[0] != 0: return False;
+        if levels[0] != 0:
+            raise KPError("Invalid group tree")
+            return False
         
         for i in range(len(self.groups)):
             if(levels[i] == 0):
@@ -1444,13 +1577,17 @@ class KPDB(object):
             j = i-1
             while j >= 0:
                 if levels[j] < levels[i]:
-                    if levels[i]-levels[j] != 1: return False;
+                    if levels[i]-levels[j] != 1:
+                        raise KPError("Invalid group tree")
+                        return False
                     
                     self.groups[i].parent = self.groups[j]
                     self.groups[i].index = len(self.groups[j].children)
                     self.groups[i].parent.children.append(self.groups[i])
                     break
-                if j == 0: return False;
+                if j == 0:
+                    raise KPError("Invalid group tree")
+                    return False
                 j -= 1
             
         for e in range(len(self._entries)):
