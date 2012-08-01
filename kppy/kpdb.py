@@ -170,7 +170,7 @@ class KPError(Exception):
         self.msg = error
 
     def __str__(self):
-        return self.msg
+        return ("KPError: "+self.msg)
 
 class KPDB(object):
     """KPDB represents the KeePass 1.x database.
