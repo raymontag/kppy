@@ -189,7 +189,7 @@ class KPDB(object):
     
     Example:
     
-    from kpdb import KPDB, KPError
+    from kppy import KPDB, KPError
     
     try;
         db = KPDB(filepath, passphrase)
