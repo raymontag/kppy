@@ -1,11 +1,12 @@
-kppy v.0.1
+kppy v.1.0
 ==========
 
-A Python-module to provide an API to KeePass 1.x files.
+A Python-module to provide an API to KeePass 1.x files which are also used by
+the popular KeePassX.
 
 * License: GPL v3 or later
 * Author: Karsten-Kai König <kkoenig@posteo.de>
-* Stable download: Will follow with stable release
+* Stable download: http://download.savannah.gnu.org/releases/kppy/
 * Website: http://www.nongnu.org/kppy/
 * Bug tracker: http://savannah.nongnu.org/bugs/?group=kppy&func=additem
 * Git:
@@ -16,9 +17,9 @@ A Python-module to provide an API to KeePass 1.x files.
 Features:
 ---------
 
-* Full Access to KeePass 1.x files:
-** Open, save and close KP-files correctly (works)
-** Edit KP-files correctly and comfortable (planned)
+* Full Access to KeePass 1.x/KeePassX files:
+** Open, save and close KP-files correctly
+** Edit KP-files correctly and comfortable
 
 * Other features: 
 ** An included secure password generator (planned)
@@ -30,6 +31,25 @@ Dependencies:
 
 * Python 3
 * PyCrypto's py3k branch (https://github.com/dlitz/pycrypto/zipball/py3k)
+
+Install:
+--------
+
+Just type "python setup.py install" (or "python3 setup.py install") with root
+rights in the root directory of kppy.
+
+WARNING:
+--------
+
+Due to the design of Python it is not possible to create a module that is as
+secure as KeePass/KeePassX itself. As long as the database is opened with this
+module, the password is saved as plain text in RAM. The problem is that even if
+the database was closed correctly it is possible that the password lies
+somewhere in your computer's RAM, it's not possible to prevent this in Python.
+That is, if your computer is compromised it is possible to dump the password
+from memory. But if your computer is really compromised it is also possible to
+get your password if you're using KeePass/KeePassX, although it's more
+difficult.
 
 Copyright (C) 2012 Karsten-Kai König <kkoenig@posteo.de>
 
