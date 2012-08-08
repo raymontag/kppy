@@ -41,15 +41,13 @@ rights in the root directory of kppy.
 WARNING:
 --------
 
-Due to the design of Python it is not possible to create a module that is as
-secure as KeePass/KeePassX itself. As long as the database is opened with this
-module, the password is saved as plain text in RAM. The problem is that even if
+
+As long as the database is opened with this
+module, the password is saved as plain text in RAM. Even if
 the database was closed correctly it is possible that the password lies
 somewhere in your computer's RAM, it's not possible to prevent this in Python.
 That is, if your computer is compromised it is possible to dump the password
-from memory. But if your computer is really compromised it is also possible to
-get your password if you're using KeePass/KeePassX, although it's more
-difficult.
+rom memory.
 
 Copyright (C) 2012 Karsten-Kai König <kkoenig@posteo.de>
 

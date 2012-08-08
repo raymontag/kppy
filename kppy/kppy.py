@@ -481,18 +481,21 @@ class KPDB(object):
 
         return True
 
-    def save(self, filepath = None):
+    def save(self, filepath = None, masterkey = None):
         """This method saves the database.
 
         It's possible to parse a data path to an alternative file.
 
         """
+        
+        if masterkey is not None and masterkey != "":
+            self.masterkey = masterkey
 
         if self.read_only:
             raise KPError("The database has been opened read-only.")
             return False
         elif self.masterkey is None or (self.filepath is None and \
-            filepath is None):
+            filepath is None) or self.masterkey == "":
             raise KPError("Need a passphrase and a filepath to save the file.")
             return False
         elif self._num_groups == 0:
@@ -614,10 +617,43 @@ class KPDB(object):
         
         if self.filepath is not None:
             remove(self.filepath+'.lock')
+            self.filepath = None
+            self.read_only = False
+            self.lock()
             return True
         else:
             raise KPError('Can\'t close a not opened file')
             return False
+
+    def lock(self):
+        """This method locks the database."""
+        
+        self.masterkey = None
+        self.groups[:] = []
+        self._entries[:] = []
+        self._group_order[:] = []
+        self._entry_order[:] = []
+        self._root_group = None 
+        self._unsupported_g_fields[:] = []
+        self._unsupported_e_fields[:] = []
+        self._num_entries = 1
+        self._num_entries = 0
+        
+        return True
+
+    def unlock(self, masterkey = None):
+        """Unlock the database.
+        
+        masterkey is needed.
+
+        """
+
+        if masterkey is None or masterkey == "":
+            raise KPError("A password is needed")
+            return False
+
+        self.maserkey = masterkey
+        return self.load() 
 
     def create_group(self, title = None, parent_id = None, image = 1):
         """This method creates a new group.
