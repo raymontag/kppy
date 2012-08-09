@@ -33,19 +33,25 @@ class StdGroup(object):
     """StdGroup represents a simple group of a KeePass 1.x database.
     
     Attributes:
-    - id_ is the group id
-    - title is the group title
-    - image is the image number used in KeePassX
-    - level is needed to create the group tree
-    - parent is the previous group
-    - children is a list of all following groups
-    - entries is a list of all entries of the group
-    - db is the database which holds the group
+    - id_ is the group id (unsigned int)
+    - title is the group title (string)
+    - image is the image number used in KeePassX (unsigned int)
+    - level is needed to create the group tree (unsigned int)
+    - parent is the previous group (StdGroup)
+    - children is a list of all following groups (list of StdGroups)
+    - entries is a list of all entries of the group (list of StdEntrys)
+    - db is the database which holds the group (KPDB)
     
     """
 
     def __init__(self, id_ = None, title = None, image = 1, db = None,
                  level = 0, parent = None, children = [], entries = []):
+        """Initialize a StdGroup-instance.
+
+        It's recommended to use create_group of KPDB and not this directly.
+
+        """
+
         self.id_ = id_
         self.title = title
         self.image = image
@@ -56,45 +62,78 @@ class StdGroup(object):
         self.db = db
 
     def set_title(self, title = None):
-        """ This method just calls set_group_title of the holding db."""
+        """This method is used to set the group title.
+
+        title must be a string.
         
-        return self.db.set_group_title(self.id_, title)
+        """
+        
+        return self.db.set_group_title(self, title)
 
     def set_image(self, image = None):
-        """This method just calls set_group_image of the holding db."""
+        """This method is used to set the image number.
+        
+        image must be an unsigned int.
+        
+        """
 
-        return self.db.set_group_image(self.id_, image)
+        return self.db.set_group_image(self, image)
 
     def move_group(self, index = None, parent = None):
-        """This method just calls move_group of the holding db."""
+        """This method moves the group in the group tree.
 
-        return self.db.move_group(self.id_, index, parent)
+        index is a valid list index of db.groups. Special index -1 means that
+        the group will be append at the end of db.groups.
+
+        parent is an optional StdGroup-instance.
+
+        Always use this method and not Python-methods!
+
+        """
+
+        return self.db.move_group(self, index, parent)
+
+    def remove_group(self):
+        """Just remove this group from db."""
+
+        return self.db.remove_group(self)
 
     def create_entry(self, title='', image=1, url='', username='', password='',
                       comment='', y=2999, mon=12, d=28, h=23, min_=59, s=59):
-        """This method just calls create_entry of the holding db."""
+        """This method creates an entry in this group.
 
-        return self.db.create_entry(self.id_, title, image, url, username, 
+        Compare to StdEntry for information about the arguments.
+
+        One of the following arguments is needed:
+
+        - title
+        - url
+        - username
+        - password
+        - comment
+        
+        """
+
+        return self.db.create_entry(self, title, image, url, username, 
                                     password, comment, y, mon, d, h, min_, s)
 
 class StdEntry(object):
     """StdEntry represents a simple entry of a KeePass 1.x database.
     
     Attributes:
-        - uuid is an "Universal Unique ID", that is it identifies the entry
-        - group_id is the id of the holding group
+        - uuid is an "Universal Unique ID", that is it identifies the entry (16 bytes string)
+        - group_id is the id of the holding group (unsigned int)
         - group is the holding StdGroup instance
-        - image is the image number
-        - title is the entry title
-        - url is an url to a website where the login information of this entry
+        - image is the image number (unsigned int)
+        - title is the entry title (string)
+        - url is an url to a website where the login information of this entry (string)
           can be used
-        - username is an username
-        - password is the password
-        - binary_desc is the description of meta-data which binary holds
-        - creation is the creation date of this entry
-        - last_mod is the date of the last modification
-        - last_access is the date of the last access
-        - expire is the date when the entry should expire
+        - username is an username (string)
+        - password is the password (string)
+        - creation is the creation date of this entry (datetime-instance)
+        - last_mod is the date of the last modification (datetime-instance)
+        - last_access is the date of the last access (datetime-instance)
+        - expire is the date when the entry should expire (datetime-instance)
         
     """
 
@@ -104,6 +143,12 @@ class StdEntry(object):
                  creation = None, last_mod = None, last_access = None, 
                  expire = None, uuid = None, binary_desc = None,
                  binary = None):
+        """Initialize a StdEntry-instance.
+
+        It's recommended to use create_entry of StdGroup or KPDB.
+
+        """
+
         self.uuid = uuid
         self.group_id = group_id
         self.group = group
@@ -121,44 +166,85 @@ class StdEntry(object):
         self.binary = binary
 
     def set_title(self, title = None):
-        """ This method just calls set_entry_title of the holding db."""
+        """This method is used to set the title.
+
+        title must be a string.
+
+        """
         
-        self.group.db.set_entry_title(self.uuid, title)
+        self.group.db.set_entry_title(self, title)
         
     def set_image(self, image = None):
-        """ This method just calls set_entry_image of the holding db."""
+        """This method is used to set the image number.
+
+        image must be an unsigned int.
+
+        """
         
-        return self.group.db.set_entry_image(self.uuid, image)
+        return self.group.db.set_entry_image(self, image)
         
     def set_url(self, url = None):
-        """ This method just calls set_entry_url of the holding db."""
+        """This method is used to set the url.
+
+        url must be a string.
+
+        """
         
-        return self.group.db.set_entry_url(self.uuid, url)
+        return self.group.db.set_entry_url(self, url)
         
     def set_username(self, username = None):
-        """ This method just calls set_entry_username of the holding db."""
+        """This method is used to set the username.
+
+        username must be a string.
+
+        """
         
-        return self.group.db.set_entry_username(self.uuid, username)
+        return self.group.db.set_entry_username(self, username)
         
     def set_password(self, password = None):
-        """ This method just calls set_entry_password of the holding db."""
+        """This method is used to set the password.
+
+        password must be a string.
+
+        """
         
-        return self.group.db.set_entry_password(self.uuid, password)
+        return self.group.db.set_entry_password(self, password)
         
     def set_comment(self, comment = None):
-        """ This method just calls set_entry_comment of the holding db."""
+        """This method is used to the the comment.
+
+        comment must be a string.
+
+        """
         
-        return self.group.db.set_entry_comment(self.uuid, comment)
+        return self.group.db.set_entry_comment(self, comment)
         
     def set_expire(self, y = 2999, mon = 12, d = 28, h = 23, min_ = 59, s = 59):
-        """ This method just calls set_entry_expire of the holding db."""
+        """This method is used to the the expiration date.
+
+        y is the year, mon the month, d the day, h the hour, min_ the minute
+        and s the second.
+
+        The special date 2999-12-28 23:59:59 means that the entry expires
+        never.
+
+        """
         
-        return self.group.db.set_entry_expire(self.uuid, y, mon, d, h, min_, s)
+        return self.group.db.set_entry_expire(self, y, mon, d, h, min_, s)
 
-    def move_entry(self, id_ = None):
-        """This method just calls move_entry of the holding db."""
+    def move_entry(self, group = None):
+        """This method moves the entry to another group.
 
-        return self.group.db.move_entry(self.uuid, id_)
+        group must be a valid StdGroup-instance.
+
+        """
+
+        return self.group.db.move_entry(self, group)
+
+    def remove_entry(self):
+        """This method removes this entry."""
+
+        return self.group.db.remove_entry(self)
 
 class KPError(Exception):
     """KPError is a exception class to handle exception raised by KPDB.
@@ -170,6 +256,8 @@ class KPError(Exception):
     
     Example:
     
+    try:
+        ...
     except KPError as e:
         print(e)
         
@@ -185,10 +273,10 @@ class KPDB(object):
     """KPDB represents the KeePass 1.x database.
     
     Attributes:
-    - groups holds all groups of the database
-    - read_only declares if the file should be read-only or not
-    - filepath holds the path of the database
-    - masterkey is the passphrase to encrypt and decrypt the database
+    - groups holds all groups of the database. (list of StdGroups)
+    - read_only declares if the file should be read-only or not (bool)
+    - filepath holds the path of the database (string)
+    - masterkey is the passphrase to encrypt and decrypt the database (string)
     
     Usage:
     
@@ -219,6 +307,24 @@ class KPDB(object):
         
         """
         
+        
+        if (filepath is None and masterkey is not None) or (filepath is not \
+            None and masterkey is None):
+            raise KPError('Missing argument: file path or master key needed '
+                          'additionally to open an existing database!')
+            return
+        elif type(read_only) is not bool or type(new) is not bool:
+            raise KPError('read_only and new must be bool')
+            return
+        elif (filepath is not None and type(filepath) is not str) or \
+            (type(masterkey) is not str and masterkey is not None):
+            raise KPError('filepath and masterkey must be a string')
+            return
+        elif filepath is None and masterkey is None and new is False:
+            raise KPError('Either an existing database should be opened or '
+                          'a new should be created.')
+            return
+
         self.groups = []
         self.read_only = read_only
         self.filepath = filepath
@@ -247,13 +353,8 @@ class KPDB(object):
         # Load an existing database
         if filepath is not None and masterkey is not None:
             self.load()
-        # To open a database two informations are needed
-        elif (filepath is None and masterkey is not None) or (filepath is not \
-            None and masterkey is None):
-            raise KPError('Missing argument: file path or master key needed '
-                          'additionally to open an existing database!')
         # Due to the design of KeePass, at least one group is needed.
-        elif new:
+        elif new is True:
             self._group_order = [("id", 1), (1,4), (2,9), (7,4), (8,2),
                                  (0xFFFF, 0)]
             group = StdGroup(1, 'Internet', 1, self, parent = self._root_group)
@@ -507,6 +608,9 @@ class KPDB(object):
             filepath is None) or self.masterkey == "":
             raise KPError("Need a passphrase and a filepath to save the file.")
             return False
+        elif type(self.filepath) is not str and type(self.masterkey) is not str:
+            raise KPError("filepath and masterkey must be strings.")
+            return False
         elif self._num_groups == 0:
             raise KPError("Need at least one group!")
             return False
@@ -661,20 +765,30 @@ class KPDB(object):
             raise KPError("A password is needed")
             return False
 
+        elif type(masterkey) is not str:
+            raise KPError("masterkey must be a string.")
+            return False
+
         self.maserkey = masterkey
         return self.load() 
 
-    def create_group(self, title = None, parent_id = None, image = 1):
+    def create_group(self, title = None, parent = None, image = 1):
         """This method creates a new group.
 
         A group title is needed or no group will be created.
 
-        If a parent id is given, the group will be created as a sub-group.
+        If a parent is given, the group will be created as a sub-group.
+
+        title must be a string, image an unsigned int >0 and parent a StdGroup.
 
         """
         
         if title is None:
             raise KPError("Need a group title to create a group.")
+            return False
+        elif type(title) is not str or image < 1 or(parent is not None and \
+            type(parent) is not StdGroup) or type(image) is not int:
+            raise KPError("Wrong type or value for title or image or parent")
             return False
 
         id_ = 1
@@ -686,7 +800,7 @@ class KPDB(object):
         group = StdGroup(id_, title, image, self)
         
         # If no parent is given, just append the new group at the end
-        if parent_id is None:
+        if parent is None:
             group.parent = self._root_group
             self._root_group.children.append(group)
             group.level = 0
@@ -702,7 +816,7 @@ class KPDB(object):
             # First count through all groups...
             for i in self.groups:
                 # ...until parent is found
-                if i.id_ == parent_id:
+                if i is parent:
                     # Append the group to the parent as a children and set
                     # the other trivial stuff
                     i.children.append(group)
@@ -711,15 +825,15 @@ class KPDB(object):
                     self.groups.insert(self.groups.index(i)+1, group)
 
                     # And now insert the field information at the right pos.
-                    parent = False
+                    found = False
                     index = 0
                     for j in self._group_order:
                         # The loop count through the order until the
                         # information of the parent are found. Then insert the 
                         # new field information.
-                        if j[0] == "id" and j[1] == parent_id:
-                            parent = True
-                        elif j[0] == 0xFFFF and parent is True:
+                        if j[0] == "id" and j[1] == parent.id_:
+                            found = True
+                        elif j[0] == 0xFFFF and found is True:
                             self._group_order.insert(index+1, (0xFFFF, 0))
                             self._group_order.insert(index+1, (8,2))
                             self._group_order.insert(index+1, (7,4))
@@ -740,15 +854,20 @@ class KPDB(object):
 
         return True
 
-    def remove_group(self, id_ = None):
+    def remove_group(self, group = None):
         """This method removes a group.
 
-        The group id is needed to remove the group.
+        The group needed to remove the group.
+
+        group must be a StdGroup.
         
         """
 
-        if id_ is None:
-            raise KPError("Need group id to remove a group")
+        if group is None:
+            raise KPError("Need group to remove a group")
+            return False
+        elif type(group) is not StdGroup:
+            raise KPError("group must be StdGroup")
             return False
 
         children = []
@@ -756,13 +875,13 @@ class KPDB(object):
 
         # Search fo the given group
         for i in self.groups:
-            if i.id_ == id_:
-                # If the group is found save all children's and entries' ids to
+            if i == group:
+                # If the group is found save all children and entries to
                 #  delete them later
                 for j in i.children:
-                    children.append(j.id_)
+                    children.append(j)
                 for j in i.entries:
-                    entries.append(j.uuid)
+                    entries.append(j)
                 # Finally remove group
                 i.parent.children.remove(i)
                 self.groups.remove(i)
@@ -775,7 +894,7 @@ class KPDB(object):
         index = 0
         while True:
             if self._group_order[index][0] == "id" and \
-                self._group_order[index][1] == id_:
+                self._group_order[index][1] == group.id_:
                 while True:
                     t = self._group_order[index][0]
                     del self._group_order[index]
@@ -808,22 +927,24 @@ class KPDB(object):
 
         return True
 
-    def set_group_title(self, id_ = None, title = None):
+    def set_group_title(self, group = None, title = None):
         """This method is used to change a group title.
 
-        Two arguments are needed: The id of the group whose title should
+        Two arguments are needed: The group whose title should
         be changed and the new title.
+
+        group must be a StrGrooup, title a string.
         
         """
         
-        if id_ is None or type(id_) is not int or title is None or \
+        if group is None or type(group) is not StdGroup or title is None or \
             type(title) is not str:
-            raise KPError("Need a group id and a new title!")
+            raise KPError("Need a group and a new title!")
             return False
 
         # Search for group and update title
         for i in self.groups:
-            if i.id_ == id_:
+            if i is group:
                 i.title = title
                 break
             elif i is self.groups[-1]:
@@ -835,7 +956,7 @@ class KPDB(object):
         index = 0
         for i in self._group_order:
             # Go through order until the entries of the given group are reached
-            if i[0] == "id" and i[1] == id_:
+            if i[0] == "id" and i[1] == group.id_:
                 found = True
             elif found is True and i[0] == 0x0002:
                 # Remove tuple which holds information about title length and
@@ -856,20 +977,22 @@ class KPDB(object):
     
         return True
 
-    def set_group_image(self, id_ = None, image = None):
+    def set_group_image(self, group = None, image = None):
         """This method is used to change the image number if a group.
 
-        Two arguments are needed: The id of the group whose image should
+        Two arguments are needed: The group whose image should
         be changed and the new image number.
+
+        group must be a StdGroup, image an unsigned int >0.
         
         """
         
-        if id_ is None or image is None or type(image) is not int:
-            raise KPError("Need a group id and an image number!")
+        if group is None or image is None or type(image) is not int or image < 1:
+            raise KPError("Need a group and an image number!")
             return False
 
         for i in self.groups:
-            if i.id_ == id_:
+            if i is group:
                 i.image = image
                 break
             elif i is self.groups[-1]:
@@ -878,27 +1001,33 @@ class KPDB(object):
         
         return True
 
-    def move_group(self, id_ = None,  index = None, parent = None):
+    def move_group(self, group = None, index = None, parent = None):
         """Move group to a specific index in self.group.
 
-        A valid group id and a valid index must be given. Index starts at 0 and
-        ends at len(self.groups). Special index -1 means that the group will
+        A valid group and a valid index must be given. Index starts at 0 and
+        ends at len(self.groups)-1. Special index -1 means that the group will
         append at the end if self.groups.
+
+        group must be a StdGroup, index an unsigned int with 
+        -1 <= index < len(self.groups) and parent must be a StdGroup.
 
         WARNING: If you parse a parent group make sure that no invalid group
         tree is going to created. For further details watch the tutorial.
         """
 
-        if id_ is None or type(id_) is not int or index is None or \
+        if group is None or type(group) is not StdGroup or index is None or \
             type(index) is not int or index < -1 or index >= len(self.groups):
-            raise KPError("A valid group id and a valid index must be given.")
+            raise KPError("A valid group and a valid index must be given.")
+            return False
+        elif parent is not None and type(parent) is not StdGroup:
+            raise KPError("parent must be a StdGroup.")
             return False
 
         if parent is None:
             parent = self._root_group
 
         for i in self.groups:
-            if id_ == i.id_:
+            if i is group:
                 i.parent.children.remove(i)
                 i.parent = parent
                 i.parent.children.append(i)
@@ -914,7 +1043,6 @@ class KPDB(object):
                 reverse_children = []
                 for j in i.children:
                     reverse_children.insert(0, j)
-                group = i
                 break
             elif i is self.groups[-1]:
                 raise KPError("Didn't find given group.")
@@ -924,7 +1052,7 @@ class KPDB(object):
         index3 = 0
         index4 = 0
         for i in self._group_order:
-            if i[0] == "id" and i[1] == id_:
+            if i[0] == "id" and i[1] == group.id_:
                 for j in self._group_order:
                     if index3 == index:
                         break
@@ -948,24 +1076,26 @@ class KPDB(object):
 
         for i in reverse_children:
             if index == -1:
-                self.move_group(i.id_, -1, group)
+                self.move_group(i, -1, group)
             else:
-                self.move_group(i.id_, index+1, group)
+                self.move_group(i, index+1, group)
 
-    def create_entry(self, group_id = None, title = "", image = 1, url = "",
+    def create_entry(self, group = None, title = "", image = 1, url = "",
                      username = "", password = "", comment = "",
                      y = 2999, mon = 12, d = 28, h = 23, min_ = 59,
                      s = 59):
         """This method creates a new entry.
         
-        The group id of the group which should hold the entry is needed.
+        The group which should hold the entry is needed.
         
         There must be at least one of the following parameters given:
             - an entry title
             - an url
             - an username
             - a password
-            - a comment
+            - a comment (all are strings)
+
+        image must be an unsigned int >0, group a StdGroup.
         
         It is possible to give an expire date in the following way:
             - y is the year between 1 and 9999 inclusive
@@ -979,14 +1109,21 @@ class KPDB(object):
         
         """
         
+        if type(title) is not str or type(image) is not int or image < 1 or \
+            type(url) is not str or type(username) is not str or \
+            type(password) is not str or type(comment) is not str or \
+            type(y) is not int or type(mon) is not int or type(d) is not int or \
+            type(h) is not int or type(min_) is not int or type(s) is not int or\
+            type(group) is not StdGroup:
+            raise KPError("One argument has not a valid type.")
+            return False
+
         # Search for the group.
-        group = None
         for i in self.groups:
-            if group_id == i.id_:
-                group = i
+            if group is i:
                 break
             elif i is self.groups[-1]:
-                raise KPError("No group for given group id.")
+                raise KPError("Group doesn't exist.")
                 return False
         
         if y > 9999 or y < 1 or mon > 12 or mon < 1 or d > 31 or d < 1 or \
@@ -1035,19 +1172,19 @@ class KPDB(object):
         
         return True
 
-    def remove_entry(self, uuid = None):
+    def remove_entry(self, entry = None):
         """This method can remove entries.
         
-        The uuid of the entry is needed.
+        The StdEntry-object entry is needed.
         
         """
         
-        if uuid is None:
-            raise KPError("Need an uuid.")
+        if entry is None or type(entry) is not StdEntry:
+            raise KPError("Need an entry.")
             return False
         
         for i in self._entries:
-            if uuid == i.uuid:
+            if entry is i:
                 i.group.entries.remove(i)
                 self._entries.remove(i)
                 break
@@ -1059,7 +1196,7 @@ class KPDB(object):
         index = 0
         while True:
             if self._entry_order[index][0] == "uuid" and \
-                self._entry_order[index][1] == uuid:
+                self._entry_order[index][1] == entry.uuid:
                 while True:
                     t = self._entry_order[index][0]
                     del self._entry_order[index]
@@ -1075,20 +1212,20 @@ class KPDB(object):
         
         return True
 
-    def set_entry_comment(self, uuid = None, comment = None):
+    def set_entry_comment(self, entry = None, comment = None):
         """This method is used to change an entry comment.
 
-        Two arguments are needed: The uuid of the entry whose comment should
-        be changed and the new comment.
-        
+        The StdEntry-object and the new comment string are needed.
+
         """
 
-        if uuid is None or comment is None or type(comment) is not str:
-            raise KPError("Need an uuid and a new comment")
+        if entry is None or comment is None or type(comment) is not str or \
+            type(entry) is not StdEntry:
+            raise KPError("Need an entry and a new comment")
             return False
 
         for i in self._entries:
-            if i.uuid == uuid:
+            if i is entry:
                 if i.password == "" and i.title == "" and i.url == "" and \
                     i.username == "" and comment == "":
                     raise KPError("There must be at least one of the following" 
@@ -1108,7 +1245,7 @@ class KPDB(object):
         index = 0
         found = False
         for i in self._entry_order:
-            if i[0] == "uuid" and i[1] == uuid:
+            if i[0] == "uuid" and i[1] == entry.uuid:
                 found = True
             elif found is True and i[0] == 0x0008:
                 del self._entry_order[index]
@@ -1125,20 +1262,20 @@ class KPDB(object):
                 return False
             index += 1
 
-    def set_entry_title(self, uuid = None, title = None):
+    def set_entry_title(self, entry = None, title = None):
         """This method is used to change an entry title.
 
-        Two arguments are needed: The uuid of the entry whose title should
-        be changed and the new title.
+        The StdEntry-object and the new title string are needed.
         
         """
 
-        if uuid is None or title is None or type(title) is not str:
-            raise KPError("Need an uuid and a new title")
+        if entry is None or title is None or type(title) is not str or \
+            type(entry) is not StdEntry:
+            raise KPError("Need an entry and a new title")
             return False
 
         for i in self._entries:
-            if i.uuid == uuid:
+            if i is entry:
                 if i.password == "" and title == "" and i.url == "" and \
                     i.username == "" and i.comment == "":
                     raise KPError("There must be at least one of the following" 
@@ -1158,7 +1295,7 @@ class KPDB(object):
         index = 0
         found = False
         for i in self._entry_order:
-            if i[0] == "uuid" and i[1] == uuid:
+            if i[0] == "uuid" and i[1] == entry.uuid:
                 found = True
             elif found is True and i[0] == 0x0004:
                 del self._entry_order[index]
@@ -1170,25 +1307,25 @@ class KPDB(object):
                               "very wrong.")
                 return False
             elif found is False and index + 1 == len(self._entry_order):
-                raise KPError("Given entry doesn't exist in group order. "
+                raise KPError("Given entry doesn't exist in entry order. "
                               "Something went very wrong.")
                 return False
             index += 1
 
-    def set_entry_password(self, uuid = None, password = None):
+    def set_entry_password(self, entry = None, password = None):
         """This method is used to change an entry password.
 
-        Two arguments are needed: The uuid of the entry whose password should
-        be changed and the new password.
+        The StdEntry-object and the new password string are needed.
         
         """
 
-        if uuid is None or password is None or type(password) is not str:
-            raise KPError("Need an uuid and a new password")
+        if entry is None or password is None or type(password) is not str or \
+            type(entry) is not StdEntry:
+            raise KPError("Need an entry and a new password")
             return False
 
         for i in self._entries:
-            if i.uuid == uuid:
+            if i is entry:
                 if password == "" and i.title == "" and i.url == "" and \
                     i.username == "" and i.comment == "":
                     raise KPError("There must be at least one of the following" 
@@ -1208,7 +1345,7 @@ class KPDB(object):
         index = 0
         found = False
         for i in self._entry_order:
-            if i[0] == "uuid" and i[1] == uuid:
+            if i[0] == "uuid" and i[1] == entry.uuid:
                 found = True
             elif found is True and i[0] == 0x0007:
                 del self._entry_order[index]
@@ -1225,20 +1362,20 @@ class KPDB(object):
                 return False
             index += 1
 
-    def set_entry_url(self, uuid = None, url = None):
+    def set_entry_url(self, entry = None, url = None):
         """This method is used to change an entry url.
 
-        Two arguments are needed: The uuid of the entry whose url should
-        be changed and the new url.
+        The StdEntry-object and the new url string are needed.
         
         """
 
-        if uuid is None or url is None or type(url) is not str:
-            raise KPError("Need an uuid and a new url")
+        if entry is None or url is None or type(url) is not str or \
+            type(entry) is not StdEntry:
+            raise KPError("Need an entry and a new url")
             return False
 
         for i in self._entries:
-            if i.uuid == uuid:
+            if i is entry:
                 if i.password == "" and i.title == "" and url == "" and \
                     i.username == "" and i.comment == "":
                     raise KPError("There must be at least one of the following" 
@@ -1258,7 +1395,7 @@ class KPDB(object):
         index = 0
         found = False
         for i in self._entry_order:
-            if i[0] == "uuid" and i[1] == uuid:
+            if i[0] == "uuid" and i[1] == entry.uuid:
                 found = True
             elif found is True and i[0] == 0x0005:
                 del self._entry_order[index]
@@ -1275,20 +1412,20 @@ class KPDB(object):
                 return False
             index += 1
 
-    def set_entry_username(self, uuid = None, username = None):
+    def set_entry_username(self, entry = None, username = None):
         """This method is used to change an entry username.
 
-        Two arguments are needed: The uuid of the entry whose username should
-        be changed and the new username.
+        The StdEntry-object and the new username string are needed.
         
         """
 
-        if uuid is None or username is None or type(username) is not str:
-            raise KPError("Need an uuid and a new username")
+        if entry is None or username is None or type(username) is not str or \
+            type(entry) is not StdEntry:
+            raise KPError("Need an entry and a new username")
             return False
 
         for i in self._entries:
-            if i.uuid == uuid:
+            if i is entry:
                 if i.password == "" and i.title == "" and i.url == "" and \
                     username == "" and i.comment == "":
                     raise KPError("There must be at least one of the following" 
@@ -1308,7 +1445,7 @@ class KPDB(object):
         index = 0
         found = False
         for i in self._entry_order:
-            if i[0] == "uuid" and i[1] == uuid:
+            if i[0] == "uuid" and i[1] == entry.uuid:
                 found = True
             elif found is True and i[0] == 0x0006:
                 del self._entry_order[index]
@@ -1325,20 +1462,20 @@ class KPDB(object):
                 return False
             index += 1
 
-    def set_entry_image(self, uuid = None, image = None):
+    def set_entry_image(self, entry = None, image = None):
         """This method is used to change the image number of an entry.
 
-        Two arguments are needed: The id of the group whose image should
-        be changed and the new image number.
+        The StdEntry-object and the new unsigned int image are needed.
         
         """
         
-        if uuid is None or image is None or type(image) is not int:
-            raise KPError("Need an entry uuid and an image number!")
+        if entry is None or image is None or type(image) is not int or \
+            type(entry) is not StdEntry:
+            raise KPError("Need an entry and an image number!")
             return False
 
         for i in self._entries:
-            if i.uuid == uuid:
+            if i is entry:
                 i.image = image
                 i.last_mod = datetime.now().replace(microsecond = 0)
                 break
@@ -1348,7 +1485,7 @@ class KPDB(object):
         
         return True
 
-    def set_entry_expire(self, uuid = None, y = 2999, mon = 12, d = 28, h = 23,
+    def set_entry_expire(self, entry = None, y = 2999, mon = 12, d = 28, h = 23,
                          min_ = 59, s = 59):
         """This method is used to change the expire date of an entry.
 
@@ -1364,8 +1501,12 @@ class KPDB(object):
         
         """
 
-        if uuid is None or type(uuid) is not bytes:
-            raise KPError("Need an uuid")
+        if entry is None or type(entry) is not StdEntry:
+            raise KPError("Need an entry")
+            return False
+        elif type(y) is not int or type(mon) is not int or type(d) is not int or \
+            type(h) is not int or type(min_) is not int or type(s) is not int:
+            raise KPError("Date variables must be ints")
             return False
         
         if y > 9999 or y < 1 or mon > 12 or mon < 1 or d > 31 or d < 1 or \
@@ -1380,7 +1521,7 @@ class KPDB(object):
             return False
 
         for i in self._entries:
-            if uuid == i.uuid:
+            if entry is i:
                 i.expire = datetime(y, mon, d, h, min_, s)
                 i.last_mod = datetime.now().replace(microsecond = 0)
                 return True
@@ -1388,31 +1529,32 @@ class KPDB(object):
                 raise KPError("Given entry doesn't exist.")
                 return False
 
-    def move_entry(self, uuid = None, id_ = None):
+    def move_entry(self, entry = None, group = None):
         """Move an entry to another group.
 
-        An entry uuid and a group id is needed.
+        A StdGroup group and a StdEntry entry are needed.
+
         """
 
-        if uuid is None or id_ is None or type(uuid) is not bytes or \
-            type(id_) is not int:
-            raise KPError("Need a valid entry uuid and a valid group id")
+        if entry is None or group is None or type(entry) is not StdEntry or \
+            type(group) is not StdGroup:
+            raise KPError("Need an entry and a group.")
             return False
 
         for i in self._entries:
-            if i.uuid == uuid:
+            if i is entry:
                 entry = i
             elif i is self._entries[-1]:
-                raise KPError("No entry found for given uuid")
+                raise KPError("No entry found.")
                 return False
         
         for i in self.groups:
-            if i.id_ is id_:
+            if i is group:
                 entry.group.entries.remove(entry)
                 i.entries.append(entry)
-                entry.group_id = id_
+                entry.group_id = group.id_
             elif i is self.groups[-1]:
-                raise KPError("No group found for given id")
+                raise KPError("No group found.")
                 return False
                 
     def _transform_key(self):

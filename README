@@ -24,13 +24,13 @@ Features:
 * Other features: 
 ** An included secure password generator (planned)
 ** Security features according to the KeePass 1.x standard like Twofish encryption (planned)
-** More security features like on-the-fly encryption are planned (planned)
 
 Dependencies:
 -------------
 
 * Python 3
-* PyCrypto's py3k branch (https://github.com/dlitz/pycrypto/zipball/py3k)
+* PyCrypto's py3k branch (https://github.com/dlitz/pycrypto/tarball/py3k)
+* A POSIX-compatible OS (e.g. GNU/Linux or *BSD)
 
 Install:
 --------
@@ -41,13 +41,12 @@ rights in the root directory of kppy.
 WARNING:
 --------
 
-
 As long as the database is opened with this
 module, the password is saved as plain text in RAM. Even if
 the database was closed correctly it is possible that the password lies
 somewhere in your computer's RAM, it's not possible to prevent this in Python.
 That is, if your computer is compromised it is possible to dump the password
-rom memory.
+from memory whether kppy tries to prevent this scenario.
 
 Copyright (C) 2012 Karsten-Kai König <kkoenig@posteo.de>
 
