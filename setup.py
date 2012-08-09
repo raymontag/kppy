@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup( 
      name = "kppy", 
-     version = "1.0", 
+     version = "1.1", 
      author = "Karsten-Kai König", 
      author_email = "kkoenig@posteo.de",
      url = "http://www.nongnu.org/kppy/",
@@ -16,9 +16,7 @@ setup(
                         "Other features:\n"
                         "\t- An included secure password generator (planned)\n"
                         "\t- Security features according to the KeePass 1.x "
-                        "standard like Twofish encryption (planned)\n"
-                        "\t- More security features like on-the-fly encryption"
-                        "are planned"),
+                        "standard like Twofish encryption (planned)"
      package_dir = {'' : 'kppy'},
      py_modules = ["kppy"],
      license = "GPL v3 or later"
