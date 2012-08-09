@@ -16,7 +16,7 @@ setup(
                         "Other features:\n"
                         "\t- An included secure password generator (planned)\n"
                         "\t- Security features according to the KeePass 1.x "
-                        "standard like Twofish encryption (planned)"
+                        "standard like Twofish encryption (planned)",
      package_dir = {'' : 'kppy'},
      py_modules = ["kppy"],
      license = "GPL v3 or later"
