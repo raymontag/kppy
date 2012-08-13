@@ -18,7 +18,7 @@ kppy.  If not, see <http://www.gnu.org/licenses/>.
 
 import struct
 from datetime import datetime
-from os import remove, path, chdir, getcwd
+from os import remove, path
 
 from Crypto import Random
 from Crypto.Hash import SHA256
@@ -26,8 +26,6 @@ from Crypto.Cipher import AES
 
 
 __doc__ = """This module implements the access to KeePass 1.x-databases."""
-
-if getcwd() != '/var/empty': chdir('/var/empty');
 
 class StdGroup(object):
     """StdGroup represents a simple group of a KeePass 1.x database.

@@ -30,7 +30,6 @@ Dependencies:
 
 * Python 3
 * PyCrypto's py3k branch (https://github.com/dlitz/pycrypto/tarball/py3k)
-* A POSIX-compatible OS (e.g. GNU/Linux or *BSD)
 
 Install:
 --------
