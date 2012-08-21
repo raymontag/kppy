@@ -132,8 +132,8 @@ class StdEntry(object):
         - last_mod is the date of the last modification (datetime-instance)
         - last_access is the date of the last access (datetime-instance)
         - expire is the date when the entry should expire (datetime-instance)
-        
-    """
+        - comment is a comment string
+    """ 
 
     def __init__(self, group_id = None, group = None,
                  image = 1, title = None, url = None, username = None,
@@ -511,6 +511,8 @@ class KPDB(object):
             elif self._group_order:
                 if field_type == 0x0001 and self._group_order[-1][0] != 0x0000:
                     self._group_order.append(("id", group.id_))
+            elif field_type == 0x0001:
+               self._group_order.append(("id", group.id_))
             self._group_order.append((field_type, field_size))
 
         # Now the same with the entries
