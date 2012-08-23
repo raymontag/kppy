@@ -717,7 +717,7 @@ class KPDB(object):
             handler.write(header+encrypted_content)
             
             if not path.isfile(self.filepath+".lock"):
-                lock= open(filepath+".lock", "w")
+                lock= open(self.filepath+".lock", "w")
                 lock.write('')
                 lock.close()
         finally:
@@ -746,7 +746,7 @@ class KPDB(object):
         self._entries[:] = []
         self._group_order[:] = []
         self._entry_order[:] = []
-        self._root_group = None 
+        self._root_group = StdGroup()
         self._unsupported_g_fields[:] = []
         self._unsupported_e_fields[:] = []
         self._num_entries = 1
@@ -769,7 +769,7 @@ class KPDB(object):
             raise KPError("masterkey must be a string.")
             return False
 
-        self.maserkey = masterkey
+        self.masterkey = masterkey
         return self.load() 
 
     def create_group(self, title = None, parent = None, image = 1):
@@ -1557,6 +1557,69 @@ class KPDB(object):
                 raise KPError("No group found.")
                 return False
                 
+    def move_entry_in_group(self, entry = None, index = None):
+        """Move entry to another position inside a group.
+
+        An entry and a valid index to insert the entry in the
+        entry list of the holding group is needed. 0 means
+        that the entry is moved to the first position 1 to
+        the second and so on.
+
+        """
+
+        if entry is None or index is None or type(entry) is not StdEntry \
+            or type(index) is not int:
+            raise KPError("Need an entry and an index.")
+            return False
+        elif index < 0 or index > len(entry.group.entries)-1:
+            raise KPError("Index is not valid.")
+            return False
+        
+        pos = entry.group.entries.index(entry)
+        pos1 = entry.group.db._entries.index(entry)
+        offset = pos1 - pos
+
+        if index <= pos:
+            temp = entry
+            entry.group.entries.remove(entry)
+            entry.group.db._entries.remove(entry)
+            entry.group.entries.insert(index, temp)
+            entry.group.db._entries.insert(index+offset, temp)
+        else:
+            entry.group.entries.insert(index+1, entry)
+            entry.group.db._entries.insert(index+offset, entry)
+            entry.group.entries.remove(entry)
+            entry.group.db._entries.remove(entry)
+
+        pos = index + offset
+        temp = []
+
+        for i in self._entry_order:
+            if i[0] == "uuid" and i[1] == entry.uuid:
+                index = self._entry_order.index(i)
+                index1 = index
+                while self._entry_order[index][0] != 0xFFFF:
+                    temp.append(self._entry_order[index])
+                    index += 1
+                temp.append(self._entry_order[index])
+                while self._entry_order[index1][0] != 0xFFFF:
+                    del self._entry_order[index1]
+                del self._entry_order[index1]
+                break
+
+        index = 0
+        index1 = 0
+        for i in self._entry_order:
+            if index1 == pos:
+                for j in temp:
+                    self._entry_order.insert(index, j)
+                break
+            elif i[0] == 0xFFFF:
+                index1 += 1
+            index += 1
+
+        return False
+
     def _transform_key(self):
         """This method creates the key to decrypt the database"""
 
