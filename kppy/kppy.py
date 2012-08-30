@@ -704,24 +704,22 @@ class KPDB(object):
         del final_key
         
         # ...and write it out
-        try:
-            if filepath is not None:
-                handler = open(filepath, "wb")
-                if self.filepath is None:
-                    self.filepath = filepath
-            elif filepath is None and self.filepath is not None:
-                handler = open(self.filepath, "wb")
-            else:
-                raise KPError("Need a filepath.")
-                return False
-            handler.write(header+encrypted_content)
-            
-            if not path.isfile(self.filepath+".lock"):
-                lock= open(self.filepath+".lock", "w")
-                lock.write('')
-                lock.close()
-        finally:
-            handler.close
+        if filepath is not None:
+            handler = open(filepath, "wb")
+            if self.filepath is None:
+                self.filepath = filepath
+        elif filepath is None and self.filepath is not None:
+            handler = open(self.filepath, "wb")
+        else:
+            raise KPError("Need a filepath.")
+            return False
+        handler.write(header+encrypted_content)
+        
+        if not path.isfile(self.filepath+".lock"):
+            lock= open(self.filepath+".lock", "w")
+            lock.write('')
+            lock.close()
+        handler.close()
 
         return True
 
