@@ -217,7 +217,8 @@ class StdEntry(object):
         
         return self.group.db.set_entry_comment(self, comment)
         
-    def set_expire(self, y = 2999, mon = 12, d = 28, h = 23, min_ = 59, s = 59):
+    def set_expire(self, y = 2999, mon = 12, d = 28, h = 23, min_ = 59, 
+                   s = 59):
         """This method is used to the the expiration date.
 
         y is the year, mon the month, d the day, h the hour, min_ the minute
@@ -293,8 +294,8 @@ class KPDB(object):
     
     """
 
-    def __init__(self, filepath=None, masterkey=None, read_only=False,
-                 new = False):
+    def __init__(self, filepath=None, password=None, keyfile=None, 
+                 read_only=False, new = False):
         """ Initialize a new or an existing database.
 
         If a 'filepath' and a 'masterkey' is passed 'load' will try to open
@@ -306,19 +307,22 @@ class KPDB(object):
         """
         
         
-        if (filepath is None and masterkey is not None) or (filepath is not \
-            None and masterkey is None):
-            raise KPError('Missing argument: file path or master key needed '
-                          'additionally to open an existing database!')
+        if ((filepath is None and (password is not None or 
+            keyfile is not None)) or filepath is not None and
+            (password is None and keyfile is None)):
+            raise KPError('Missing argument: file path, password or keyfile '
+                          'needed additionally to open an existing database!')
             return
         elif type(read_only) is not bool or type(new) is not bool:
             raise KPError('read_only and new must be bool')
             return
-        elif (filepath is not None and type(filepath) is not str) or \
-            (type(masterkey) is not str and masterkey is not None):
-            raise KPError('filepath and masterkey must be a string')
+        elif ((filepath is not None and type(filepath) is not str) or
+              (type(password) is not str and password is not None) or
+              (type(keyfile) is not str and keyfile is not None)):
+            raise KPError('filepath, masterkey and keyfile must be a string')
             return
-        elif filepath is None and masterkey is None and new is False:
+        elif (filepath is None and password is None and keyfile is None and 
+              new is False):
             raise KPError('Either an existing database should be opened or '
                           'a new should be created.')
             return
@@ -326,7 +330,8 @@ class KPDB(object):
         self.groups = []
         self.read_only = read_only
         self.filepath = filepath
-        self.masterkey = masterkey
+        self.password = password
+        self.keyfile = keyfile
 
         # This are attributes that are needed internally. You should not
         # change them directly, it could damage the database!
@@ -349,7 +354,8 @@ class KPDB(object):
         self._key_transf_rounds = 50000
 
         # Load an existing database
-        if filepath is not None and masterkey is not None:
+        if (filepath is not None and (password is not None or 
+            keyfile is not None)):
             self.load()
         # Due to the design of KeePass, at least one group is needed.
         elif new is True:
@@ -362,11 +368,14 @@ class KPDB(object):
     def load(self):
         """This method opens an existing database.
 
-        self.masterkey and self.filepath needs to be set.
+        self.password/self.keyfile and self.filepath must be set.
         
         """
 
-        if self.masterkey is None or self.filepath is None:
+        if self.password is None and self.keyfile is None:
+            raise KPError('Need a password or keyfile')
+            return False
+        elif self.filepath is None:
             raise KPError('Can only load an existing database!')
             return False
         
@@ -429,8 +438,19 @@ class KPDB(object):
             del crypted_content
             return False
         
+        if self.password is None:
+            masterkey = self._get_filekey()
+        elif self.password is not None and self.keyfile is not None:
+            passwordkey = self._get_passwordkey()
+            filekey = self._get_filekey()
+            sha = SHA256.new()
+            sha.update(passwordkey+filekey)
+            masterkey = sha.digest()
+        else:
+            masterkey = self._get_passwordkey()
+
         # Create the key that is needed to...
-        final_key = self._transform_key()
+        final_key = self._transform_key(masterkey)
         # ...decrypt the content
         decrypted_content = self._cbc_decrypt(final_key, crypted_content)
 
@@ -449,6 +469,7 @@ class KPDB(object):
             raise KPError("Hash test failed.\nThe key is wrong or the file is "
                           "damaged.")
             return False
+        del masterkey
         del final_key
 
         # Read out the groups
@@ -591,25 +612,38 @@ class KPDB(object):
 
         return True
 
-    def save(self, filepath = None, masterkey = None):
+    def save(self, filepath = None, password = None, keyfile = None):
         """This method saves the database.
 
         It's possible to parse a data path to an alternative file.
 
         """
         
-        if masterkey is not None and masterkey != "":
-            self.masterkey = masterkey
+        if (password is None and keyfile is not None and keyfile != "" and
+            type(keyfile) is str):
+            self.keyfile = keyfile
+        elif (keyfile is None and password is not None and password != "" and
+              type(password is str)):
+            self.password = password
+        elif (keyfile is not None and password is not None and
+              keyfile != "" and password != "" and type(keyfile) is str and
+              type(password) is str):
+            self.keyfile = keyfile
+            self.password = password
 
         if self.read_only:
             raise KPError("The database has been opened read-only.")
             return False
-        elif self.masterkey is None or (self.filepath is None and \
-            filepath is None) or self.masterkey == "":
-            raise KPError("Need a passphrase and a filepath to save the file.")
+        elif ((self.password is None and self.keyfile is None) or 
+              (filepath is None and self.filepath is None) or 
+              (keyfile == "" and password == "")):
+            raise KPError("Need a password/keyfile and a filepath to save the "
+                          "file.")
             return False
-        elif type(self.filepath) is not str and type(self.masterkey) is not str:
-            raise KPError("filepath and masterkey must be strings.")
+        elif ((type(self.filepath) is not str and self.filepath is not None) or
+              (type(self.password) is not str and self.password is not None) or
+              (type(self.keyfile) is not str and self.keyfile is not None)):
+            raise KPError("filepath, password and keyfile  must be strings.")
             return False
         elif self._num_groups == 0:
             raise KPError("Need at least one group!")
@@ -697,30 +731,59 @@ class KPDB(object):
         header += struct.pack('<I', self._key_transf_rounds)
 
         # Finally encrypt everything...
-        final_key = self._transform_key()
-
+        if self.password is None:
+            masterkey = self._get_filekey()
+        elif self.password is not None and self.keyfile is not None:
+            passwordkey = self._get_passwordkey()
+            filekey = self._get_filekey()
+            sha = SHA256.new()
+            sha.update(passwordkey+filekey)
+            masterkey = sha.digest()
+        else:
+            masterkey = self._get_passwordkey()
+        final_key = self._transform_key(masterkey)
         encrypted_content = self._cbc_encrypt(content, final_key)
         del content
+        del masterkey
         del final_key
         
         # ...and write it out
         if filepath is not None:
-            handler = open(filepath, "wb")
+            try:
+                handler = open(filepath, "wb")
+            except IOError:
+                raise KPError("Can't open {0}".format(filepath))
+                return False
             if self.filepath is None:
                 self.filepath = filepath
         elif filepath is None and self.filepath is not None:
-            handler = open(self.filepath, "wb")
+            try:
+                handler = open(self.filepath, "wb")
+            except IOError:
+                raise KPError("Can't open {0}".format(self.filepath))
+                return False
         else:
             raise KPError("Need a filepath.")
             return False
-        handler.write(header+encrypted_content)
+
+        try:
+            handler.write(header+encrypted_content)
+        except IOError:
+            raise KPError("Can't write to file.")
+            return False
+        finally:
+            handler.close()
         
         if not path.isfile(self.filepath+".lock"):
-            lock= open(self.filepath+".lock", "w")
-            lock.write('')
-            lock.close()
-        handler.close()
-
+            try:
+                lock= open(self.filepath+".lock", "w")
+                lock.write('')
+            except IOError:
+                raise KPError("Can't create lock-file {0}".format(self.filepath
+                                                                  +".lock"))
+                return False
+            else:
+                lock.close()
         return True
 
     def close(self):
@@ -739,7 +802,8 @@ class KPDB(object):
     def lock(self):
         """This method locks the database."""
         
-        self.masterkey = None
+        self.password = None
+        self.keyfile = None
         self.groups[:] = []
         self._entries[:] = []
         self._group_order[:] = []
@@ -749,25 +813,27 @@ class KPDB(object):
         self._unsupported_e_fields[:] = []
         self._num_entries = 1
         self._num_entries = 0
-        
         return True
 
-    def unlock(self, masterkey = None):
+    def unlock(self, password = None, keyfile = None):
         """Unlock the database.
         
         masterkey is needed.
 
         """
 
-        if masterkey is None or masterkey == "":
-            raise KPError("A password is needed")
+        if ((password is None or password == "") and (keyfile is None or
+             keyfile == "")):
+            raise KPError("A password/keyfile is needed")
             return False
-
-        elif type(masterkey) is not str:
-            raise KPError("masterkey must be a string.")
+        elif ((type(password) is not str and password is not None) or
+              (type(keyfile) is not str and keyfile is not None)):
+            raise KPError("password/keyfile must be a string.")
             return False
-
-        self.masterkey = masterkey
+        if keyfile == "": keyfile = None;
+        if password == "": password = None;
+        self.password = password
+        self.keyfile = keyfile
         return self.load() 
 
     def create_group(self, title = None, parent = None, image = 1):
@@ -1618,27 +1684,58 @@ class KPDB(object):
 
         return False
 
-    def _transform_key(self):
+    def _transform_key(self, masterkey):
         """This method creates the key to decrypt the database"""
 
-        # First, hash the masterkey
-        sha_obj = SHA256.new()
-        sha_obj.update(self.masterkey.encode())
-        hashed_key = sha_obj.digest()
         aes = AES.new(self._transf_randomseed, AES.MODE_ECB)
 
-        # Next, encrypt the created hash
+        # Encrypt the created hash
         for i in range(self._key_transf_rounds):
-            hashed_key = aes.encrypt(hashed_key)
+            masterkey = aes.encrypt(masterkey)
 
         # Finally, hash it again...
         sha_obj = SHA256.new()
-        sha_obj.update(hashed_key)
-        hashed_key = sha_obj.digest()
+        sha_obj.update(masterkey)
+        masterkey = sha_obj.digest()
         # ...and hash the result together with the randomseed
         sha_obj = SHA256.new()
-        sha_obj.update(self._final_randomseed + hashed_key)
+        sha_obj.update(self._final_randomseed + masterkey)
         return sha_obj.digest()
+
+    def _get_passwordkey(self):
+        """This method just hashes self.password."""
+
+        sha = SHA256.new()
+        sha.update(self.password)
+        return sha.digest()
+
+    def _get_filekey(self):
+        """This method creates a key from a keyfile."""
+
+        try:
+            handler = open(self.keyfile, 'rb')
+            buf = handler.read()
+        except:
+            raise KPError('Could not open file.')
+            return False
+        finally:
+            handler.close()
+        sha = SHA256.new()
+        if len(buf) == 33:
+            sha.update(buf)
+            return sha.digest()
+        elif len(buf) == 65:
+            sha.update(struct.unpack('<65s', buf)[0].decode())
+            return sha.digest()
+        else:
+            while buf:
+                if len(buf) <= 2049:
+                    sha.update(buf)
+                    buf = []
+                else:
+                    sha.update(buf[:2048])
+                    buf = buf[2048:]
+            return sha.digest()
 
     def _cbc_decrypt(self, final_key, crypted_content):
         """This method decrypts the database"""
