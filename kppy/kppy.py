@@ -43,7 +43,9 @@ class StdGroup(object):
     """
 
     def __init__(self, id_ = None, title = None, image = 1, db = None,
-                 level = 0, parent = None, children = [], entries = []):
+                 level = 0, parent = None, children = [], entries = [],
+                 creation = None, last_mod = None, last_access = None,
+                 expire = None, flags = None):
         """Initialize a StdGroup-instance.
 
         It's recommended to use create_group of KPDB and not this directly.
@@ -54,45 +56,92 @@ class StdGroup(object):
         self.title = title
         self.image = image
         self.level = level
+        self.creation = creation
+        self.last_mod = last_mod
+        self.last_access = last_access
+        self.expire = expire
+        self.flags = flags
         self.parent = parent
         self.children = list(children)
         self.entries = list(entries)
         self.db = db
 
     def set_title(self, title = None):
-        """This method is used to set the group title.
+        """This method is used to change a group title.
 
         title must be a string.
-        
+
         """
         
-        return self.db.set_group_title(self, title)
+        if title is None or type(title) is not str:
+            raise KPError("Need a new title!")
+            return False
+        else:
+            self.title = title
+            self.last_mod = datetime.now().replace(microsecond = 0)
+            return True
 
     def set_image(self, image = None):
-        """This method is used to set the image number.
+        """This method is used to change the image number of a group.
+
+        image must be an unsigned int >0.
+
+        """
         
-        image must be an unsigned int.
+        if image is None or type(image) is not int or image < 1:
+            raise KPError("Need a group and an image number!")
+            return False
+        else:
+            self.image = image
+            self.last_mod = datetime.now().replace(microsecond = 0)
+            return True
+
+    def set_expire(self, y = 2999, mon = 12, d = 28, h = 23, min_ = 59, 
+                   s = 59):
+        """This method is used to change the expire date of a group
+
+            - y is the year between 1 and 9999 inclusive
+            - mon is the month between 1 and 12
+            - d is a day in the given month
+            - h is a hour between 0 and 23
+            - min_ is a minute between 0 and 59
+            - s is a second between 0 and 59
+
+        The special date 2999-12-28 23:59:59 means that group expires never. If
+        only an uuid is given the expire date will set to this one.
         
         """
 
-        return self.db.set_group_image(self, image)
+        if type(y) is not int or type(mon) is not int or type(d) is not int or \
+            type(h) is not int or type(min_) is not int or type(s) is not int:
+            raise KPError("Date variables must be integers")
+            return False
+        elif y > 9999 or y < 1 or mon > 12 or mon < 1 or d > 31 or d < 1 or \
+            h > 23 or h < 0 or min_ > 59 or min_ < 0 or s > 59 or s < 0:
+            raise KPError("No legal date")
+            return False
+        elif ((mon == 1 or mon == 3 or mon == 5 or mon == 7 or mon == 8 or \
+             mon == 10 or mon == 12) and d > 31) or ((mon == 4 or mon == 6 or \
+             mon == 9 or mon == 11) and d > 30) or (mon == 2 and d > 28):
+            raise KPError("Given day doesn't exist in given month")
+            return False
+        else:
+            self.expire = datetime(y, mon, d, h, min_, s)
+            self.last_mod = datetime.now().replace(microsecond = 0)
+            return True
 
-    def move_group(self, index = None, parent = None):
-        """This method moves the group in the group tree.
+    def move_group(self, parent):
+        """calls self.db.move_group"""
 
-        index is a valid list index of db.groups. Special index -1 means that
-        the group will be append at the end of db.groups.
+        return self.db.move_group(self, parent)
 
-        parent is an optional StdGroup-instance.
+    def move_group_in_parent(self, index):
+        """calls move_group_in_parent"""
 
-        Always use this method and not Python-methods!
-
-        """
-
-        return self.db.move_group(self, index, parent)
+        return self.db.move_group_in_parent(self, index)
 
     def remove_group(self):
-        """Just remove this group from db."""
+        """This method calls remove_group of the holding db"""
 
         return self.db.remove_group(self)
 
@@ -164,13 +213,19 @@ class StdEntry(object):
         self.binary = binary
 
     def set_title(self, title = None):
-        """This method is used to set the title.
+        """This method is used to change an entry title.
 
-        title must be a string.
+        A new title string is needed.
 
         """
-        
-        self.group.db.set_entry_title(self, title)
+
+        if title is None or type(title) is not str:
+            raise KPError("Need a new title.")
+            return False
+        else:
+            self.title = title
+            self.last_mod = datetime.now().replace(microsecond=0)
+            return True
         
     def set_image(self, image = None):
         """This method is used to set the image number.
@@ -179,7 +234,13 @@ class StdEntry(object):
 
         """
         
-        return self.group.db.set_entry_image(self, image)
+        if image is None or type(image) is not int:
+            raise KPError("Need a new image number")
+            return False
+        else:
+            self.image = image
+            self.last_mod = datetime.now().replace(microsecond=0)
+            return True
         
     def set_url(self, url = None):
         """This method is used to set the url.
@@ -187,9 +248,15 @@ class StdEntry(object):
         url must be a string.
 
         """
-        
-        return self.group.db.set_entry_url(self, url)
-        
+                
+        if url is None or type(url) is not str:
+            raise KPError("Need a new image number")
+            return False
+        else:
+            self.url = url
+            self.last_mod = datetime.now().replace(microsecond=0)
+            return True
+
     def set_username(self, username = None):
         """This method is used to set the username.
 
@@ -197,7 +264,13 @@ class StdEntry(object):
 
         """
         
-        return self.group.db.set_entry_username(self, username)
+        if username is None or type(username) is not str:
+            raise KPError("Need a new image number")
+            return False
+        else:
+            self.username = username
+            self.last_mod = datetime.now().replace(microsecond=0)
+            return True
         
     def set_password(self, password = None):
         """This method is used to set the password.
@@ -206,7 +279,13 @@ class StdEntry(object):
 
         """
         
-        return self.group.db.set_entry_password(self, password)
+        if password is None or type(password) is not str:
+            raise KPError("Need a new image number")
+            return False
+        else:
+            self.password = password
+            self.last_mod = datetime.now().replace(microsecond=0)
+            return True
         
     def set_comment(self, comment = None):
         """This method is used to the the comment.
@@ -215,21 +294,47 @@ class StdEntry(object):
 
         """
         
-        return self.group.db.set_entry_comment(self, comment)
-        
+        if comment is None or type(comment) is not str:
+            raise KPError("Need a new image number")
+            return False
+        else:
+            self.comment = comment
+            self.last_mod = datetime.now().replace(microsecond=0)
+            return True
+
     def set_expire(self, y = 2999, mon = 12, d = 28, h = 23, min_ = 59, 
                    s = 59):
-        """This method is used to the the expiration date.
+        """This method is used to change the expire date of an entry.
 
-        y is the year, mon the month, d the day, h the hour, min_ the minute
-        and s the second.
+            - y is the year between 1 and 9999 inclusive
+            - mon is the month between 1 and 12
+            - d is a day in the given month
+            - h is a hour between 0 and 23
+            - min_ is a minute between 0 and 59
+            - s is a second between 0 and 59
 
-        The special date 2999-12-28 23:59:59 means that the entry expires
-        never.
-
-        """
+        The special date 2999-12-28 23:59:59 means that  expires never. If
+        only an uuid is given the expire date will set to this one.
         
-        return self.group.db.set_entry_expire(self, y, mon, d, h, min_, s)
+        """
+
+        if type(y) is not int or type(mon) is not int or type(d) is not int or \
+            type(h) is not int or type(min_) is not int or type(s) is not int:
+            raise KPError("Date variables must be integers")
+            return False
+        elif y > 9999 or y < 1 or mon > 12 or mon < 1 or d > 31 or d < 1 or \
+            h > 23 or h < 0 or min_ > 59 or min_ < 0 or s > 59 or s < 0:
+            raise KPError("No legal date")
+            return False
+        elif ((mon == 1 or mon == 3 or mon == 5 or mon == 7 or mon == 8 or \
+             mon == 10 or mon == 12) and d > 31) or ((mon == 4 or mon == 6 or \
+             mon == 9 or mon == 11) and d > 30) or (mon == 2 and d > 28):
+            raise KPError("Given day doesn't exist in given month")
+            return False
+        else:
+            self.expire = datetime(y, mon, d, h, min_, s)
+            self.last_mod = datetime.now().replace(microsecond = 0)
+            return True
 
     def move_entry(self, group = None):
         """This method moves the entry to another group.
@@ -239,6 +344,15 @@ class StdEntry(object):
         """
 
         return self.group.db.move_entry(self, group)
+
+    def move_entry_in_group(self, index):
+        """This method moves the entry to another position in the group.
+        
+        index must be a valid index for self.group.entries.
+
+        """ 
+
+        return self.group.db.move_entry_in_group(self, index)
 
     def remove_entry(self):
         """This method removes this entry."""
@@ -455,8 +569,8 @@ class KPDB(object):
         decrypted_content = self._cbc_decrypt(final_key, crypted_content)
 
         # Check if decryption failed
-        if (len(decrypted_content) > 2147483446) or \
-            (len(decrypted_content) == 0 and self._num_groups > 0):
+        if ((len(decrypted_content) > 2147483446) or
+            (len(decrypted_content) == 0 and self._num_groups > 0)):
             raise KPError("Decryption failed!\nThe key is wrong or the file is"
                           " damaged.")
             del decrypted_content
@@ -512,12 +626,6 @@ class KPDB(object):
                 group = StdGroup()
                 cur_group += 1
             
-            # Some fields are currently not implemented
-            if field_type == 0x0003 or field_type == 0x0004 or \
-                field_type == 0x0005 or field_type == 0x0006 or \
-                field_type == 0x0009 or field_type == 0x0000:
-                self._unsupported_g_fields.append(decrypted_content[:field_size])
-    
             decrypted_content = decrypted_content[field_size:]
 
             if pos >= len(crypted_content)+124:
@@ -525,16 +633,6 @@ class KPDB(object):
                 del decrypted_content
                 del crypted_content
                 return False
-
-            #This is needed to write changes
-            if field_type == 0x0000:
-               self._group_order.append(("id", group.id_))
-            elif self._group_order:
-                if field_type == 0x0001 and self._group_order[-1][0] != 0x0000:
-                    self._group_order.append(("id", group.id_))
-            elif field_type == 0x0001:
-               self._group_order.append(("id", group.id_))
-            self._group_order.append((field_type, field_size))
 
         # Now the same with the entries
         cur_entry = 0
@@ -566,7 +664,7 @@ class KPDB(object):
             
             if field_type == 0xFFFF and b_ret == True:
                 self._entries.append(entry)
-                if not entry.group_id:
+                if entry.group_id is None:
                     raise KPError("Found entry without group!")
                     del decrypted_content
                     del crypted_content
@@ -575,9 +673,6 @@ class KPDB(object):
                 entry = StdEntry()
                 cur_entry += 1
             
-            if field_type == 0x0000:
-                self._unsupported_e_fields.append(decrypted_content[:field_size])
-
             decrypted_content = decrypted_content[field_size:]
             pos += field_size
             
@@ -586,15 +681,6 @@ class KPDB(object):
                 del decrypted_content
                 del crypted_content
                 return False
-            if field_type == 0x0000:
-                self._entry_order.append(("uuid", entry.uuid))
-            elif field_type == 0x0001:
-                if self._entry_order:
-                    if not self._entry_order[-1] == 0x0000:
-                        self._entry_order.append(("uuid", entry.uuid))
-                else:
-                    self._entry_order.append(("uuid", entry.uuid))
-            self._entry_order.append((field_type, field_size))
 
         if self._create_group_tree(levels) is False:
             del decrypted_content
@@ -650,63 +736,32 @@ class KPDB(object):
             return False
         
         content = bytearray()
-        pos = 0
-        group = 0
 
         # First, read out all groups
-        for field_type, field_size in self._group_order:
-            if field_type == "id":
-                continue
-
+        for i in self.groups:
             # Get the packed bytes
-            ret_save = self._save_group_field(field_type, field_size, 
-                                                self.groups[group])
-
-            # Catch illegal group fields, maybe the data was wrong manipulated
-            if ret_save is False:
-                raise KPError("Illegal group field found while saving")
-                return False
-
-            # The field type and the size is always in front of the data
-            content += struct.pack('<H', field_type)
-            content += struct.pack('<I', field_size)
-
-            # Write unsupported fields
-            if field_type == 0x0000 or field_type == 0x0003 or \
-                field_type == 0x0004 or field_type == 0x0005 or \
-                field_type == 0x0006 or field_type == 0x0009:
-                content += self._unsupported_g_fields[pos]
-                pos += 1
-            elif not field_type == 0xFFFF:
-                content += ret_save
-            # If it's the end of the group, go to the next one
-            elif field_type == 0xFFFF:
-                group += 1
-
-        pos = 0
-        entry = 0
+            # j stands for a possible field type
+            for j in range(1,10):
+                ret_save = self._save_group_field(j, i)
+                # The field type and the size is always in front of the data
+                if ret_save is not False:
+                    content += struct.pack('<H', j)
+                    content += struct.pack('<I', ret_save[0])
+                    content += ret_save[1]
+            # End of field
+            content += struct.pack('<H', 0xFFFF)
+            content += struct.pack('<I', 0) 
 
         # Same with entries
-        for field_type, field_size in self._entry_order:
-            if field_type == "uuid":
-                continue
-            ret_save = self._save_entry_field(field_type, field_size,
-                                                self._entries[entry])
-
-            if ret_save is False:
-                raise KPError("Illegal entry field found while saving")
-                return False
-
-            content += struct.pack('<H', field_type)
-            content += struct.pack('<I', field_size)
-
-            if field_type == 0x0000:
-                content += self._unsupported_e_fields[pos]
-                pos += 1
-            elif not field_type == 0xFFFF:
-                content += ret_save
-            elif field_type == 0xFFFF:
-                entry += 1
+        for i in self._entries:
+            for j in range(1, 15):
+                ret_save = self._save_entry_field(j, i)
+                if ret_save is not False:
+                    content += struct.pack('<H', j)
+                    content += struct.pack('<I', ret_save[0])
+                    content += ret_save[1]
+            content += struct.pack('<H', 0xFFFF)
+            content += struct.pack('<I', 0)
 
         # Generate new seed and new vector; calculate the new hash
         self._final_randomseed = Random.get_random_bytes(16)
@@ -836,7 +891,9 @@ class KPDB(object):
         self.keyfile = keyfile
         return self.load() 
 
-    def create_group(self, title = None, parent = None, image = 1):
+    def create_group(self, title = None, parent = None, image = 1,
+                     y = 2999, mon = 12, d = 28, h = 23, min_ = 59,
+                     s = 59):
         """This method creates a new group.
 
         A group title is needed or no group will be created.
@@ -844,6 +901,9 @@ class KPDB(object):
         If a parent is given, the group will be created as a sub-group.
 
         title must be a string, image an unsigned int >0 and parent a StdGroup.
+
+        With y, mon, d, h, min_ and s you can set an expiration date like on
+        entries.
 
         """
         
@@ -858,10 +918,13 @@ class KPDB(object):
         id_ = 1
         for i in self.groups:
             if i.id_ >= id_:
-                id_ = i.id_
-        
-        id_ += 1 
+                id_ = i.id_ + 1
         group = StdGroup(id_, title, image, self)
+        group.creation = datetime.now().replace(microsecond=0)
+        group.last_mod = datetime.now().replace(microsecond=0)
+        group.last_access = datetime.now().replace(microsecond=0)
+        if group.set_expire(y,mon,d,h,min_,s) is False:
+            group.set_expire()
         
         # If no parent is given, just append the new group at the end
         if parent is None:
@@ -869,53 +932,17 @@ class KPDB(object):
             self._root_group.children.append(group)
             group.level = 0
             self.groups.append(group)
-            self._group_order.append(("id", id_))
-            self._group_order.append((1,4))
-            self._group_order.append((2,len(title)+1))
-            self._group_order.append((7,4))
-            self._group_order.append((8,2))
-            self._group_order.append((0xFFFF, 0))
-        # If a parent is given it's more complex
+        # Else insert the group behind the parent
         else:
-            # First count through all groups...
-            for i in self.groups:
-                # ...until parent is found
-                if i is parent:
-                    # Append the group to the parent as a children and set
-                    # the other trivial stuff
-                    i.children.append(group)
-                    group.parent = i
-                    group.level = i.level+1
-                    self.groups.insert(self.groups.index(i)+1, group)
-
-                    # And now insert the field information at the right pos.
-                    found = False
-                    index = 0
-                    for j in self._group_order:
-                        # The loop count through the order until the
-                        # information of the parent are found. Then insert the 
-                        # new field information.
-                        if j[0] == "id" and j[1] == parent.id_:
-                            found = True
-                        elif j[0] == 0xFFFF and found is True:
-                            self._group_order.insert(index+1, (0xFFFF, 0))
-                            self._group_order.insert(index+1, (8,2))
-                            self._group_order.insert(index+1, (7,4))
-                            self._group_order.insert(index+1, (2,len(title)+1))
-                            self._group_order.insert(index+1, (1,4))
-                            self._group_order.insert(index+1, ("id", id_))
-                            break
-                        elif index+1 == len(self._group_order):
-                            raise KPError("Didn't find parent in group order")
-                            return False
-                        index += 1
-                    break
-                elif i is self.groups[-1]:
-                    raise KPError("Given group doesn't exist")
-                    return False
-        
+            if parent in self.groups:
+                parent.children.append(group)
+                group.parent = parent
+                group.level = parent.level+1
+                self.groups.insert(self.groups.index(parent)+1, group)
+            else:
+                raise KPError("Given parent doesn't exist")
+                return False
         self._num_groups += 1
-
         return True
 
     def remove_group(self, group = None):
@@ -936,213 +963,110 @@ class KPDB(object):
 
         children = []
         entries = []
-
-        # Search fo the given group
-        for i in self.groups:
-            if i == group:
-                # If the group is found save all children and entries to
-                #  delete them later
-                for j in i.children:
-                    children.append(j)
-                for j in i.entries:
-                    entries.append(j)
-                # Finally remove group
-                i.parent.children.remove(i)
-                self.groups.remove(i)
-                break
-            elif i is self.groups[-1]:
-                raise KPError("Given group doesn't exist")
-                return False
-
-        # Delete also group from group_order
-        index = 0
-        while True:
-            if self._group_order[index][0] == "id" and \
-                self._group_order[index][1] == group.id_:
-                while True:
-                    t = self._group_order[index][0]
-                    del self._group_order[index]
-                    if t == 0xFFFF:
-                        break
-                break
-            elif index+1 == len(self._group_order):
-                raise KPError("Didnt' find group in group order")
-                return False
-            index += 1
-
+        if group in self.groups:
+            # Save all children and entries to
+            # delete them later
+            children.extend(group.children)
+            entries.extend(group.entries)
+            # Finally remove group
+            group.parent.children.remove(group)
+            self.groups.remove(group)
+        else:
+            raise KPError("Given group doesn't exist")
+            return False
         self._num_groups -= 1
         
-        '''
-        #from python cookbook
-        if children:
-            children.sort()
-            last = children[-1]
-            for i in range(len(children)-2, -1, -1):
-                if last == children[i]:
-                    del children[i]
-                else:
-                    last = children[i]
-        '''
-        # Delete all children and entries
         for i in children:
             self.remove_group(i)
         for i in entries:
             self.remove_entry(i)     
-
         return True
 
-    def set_group_title(self, group = None, title = None):
-        """This method is used to change a group title.
+    def move_group(self, group = None, parent = None):
+        """Append group to a new parent.
 
-        Two arguments are needed: The group whose title should
-        be changed and the new title.
+        group and parent must be StdGroup-instances.
 
-        group must be a StrGrooup, title a string.
-        
-        """
-        
-        if group is None or type(group) is not StdGroup or title is None or \
-            type(title) is not str:
-            raise KPError("Need a group and a new title!")
-            return False
-
-        # Search for group and update title
-        for i in self.groups:
-            if i is group:
-                i.title = title
-                break
-            elif i is self.groups[-1]:
-                raise KPError("Given group doesn't exist.")
-                return False
-
-        # Now update group order
-        found = False
-        index = 0
-        for i in self._group_order:
-            # Go through order until the entries of the given group are reached
-            if i[0] == "id" and i[1] == group.id_:
-                found = True
-            elif found is True and i[0] == 0x0002:
-                # Remove tuple which holds information about title length and
-                # create a new one
-                del self._group_order[index]
-                self._group_order.insert(index, (2, len(title)+1))
-                break
-            elif found is True and (i[0] == 0xFFFF or \
-                i is self._group_order[-1]):
-                raise KPError("Given group hasn't an title. Something went "
-                              "very wrong.")
-                return False
-            elif found is False and index + 1 == len(self._group_order):
-                raise KPError("Given group doesn't exist in group order. "
-                              "Something went very wrong.")
-                return False
-            index += 1
-    
-        return True
-
-    def set_group_image(self, group = None, image = None):
-        """This method is used to change the image number if a group.
-
-        Two arguments are needed: The group whose image should
-        be changed and the new image number.
-
-        group must be a StdGroup, image an unsigned int >0.
-        
-        """
-        
-        if group is None or image is None or type(image) is not int or image < 1:
-            raise KPError("Need a group and an image number!")
-            return False
-
-        for i in self.groups:
-            if i is group:
-                i.image = image
-                break
-            elif i is self.groups[-1]:
-                raise KPError("Given group doesn't exist.")
-                return False
-        
-        return True
-
-    def move_group(self, group = None, index = None, parent = None):
-        """Move group to a specific index in self.group.
-
-        A valid group and a valid index must be given. Index starts at 0 and
-        ends at len(self.groups)-1. Special index -1 means that the group will
-        append at the end if self.groups.
-
-        group must be a StdGroup, index an unsigned int with 
-        -1 <= index < len(self.groups) and parent must be a StdGroup.
-
-        WARNING: If you parse a parent group make sure that no invalid group
-        tree is going to created. For further details watch the tutorial.
         """
 
-        if group is None or type(group) is not StdGroup or index is None or \
-            type(index) is not int or index < -1 or index >= len(self.groups):
-            raise KPError("A valid group and a valid index must be given.")
+        if group is None or type(group) is not StdGroup:
+            raise KPError("A valid group must be given.")
             return False
         elif parent is not None and type(parent) is not StdGroup:
             raise KPError("parent must be a StdGroup.")
             return False
-
-        if parent is None:
-            parent = self._root_group
-
-        for i in self.groups:
-            if i is group:
-                i.parent.children.remove(i)
-                i.parent = parent
-                i.parent.children.append(i)
-                if parent is self._root_group:
-                    i.level = 0
+        elif group is parent:
+            raise KPError("group and parent must not be the same group")
+            return False
+        if parent is None: parent = self._root_group;
+        if group in self.groups:
+            self.groups.remove(group)
+            group.parent.children.remove(group)
+            group.parent = parent
+            if parent.children:
+                if parent.children[-1] is self.groups[-1]:
+                    self.groups.append(group)
                 else:
-                    i.level = i.parent.level + 1
-                self.groups.remove(i)
-                if index == -1:
-                    self.groups.append(i)
-                else:
-                    self.groups.insert(index, i)
-                reverse_children = []
-                for j in i.children:
-                    reverse_children.insert(0, j)
-                break
-            elif i is self.groups[-1]:
-                raise KPError("Didn't find given group.")
-                return False
-
-        index2 = 0
-        index3 = 0
-        index4 = 0
-        for i in self._group_order:
-            if i[0] == "id" and i[1] == group.id_:
-                for j in self._group_order:
-                    if index3 == index:
-                        break
-                    elif j[0] == 0xFFFF:
-                        index3 += 1
-                    index4 += 1
-                while self._group_order[index2][0] != 0xFFFF:
-                    self._group_order.insert(index4,
-                                             self._group_order[index2])
-                    del self._group_order[index2+1]
-                    index2 += 1
-                    index4 += 1
-                self._group_order.insert(index4,
-                                         self._group_order[index2])
-                del self._group_order[index2+1]
-                break
-            elif index2+1 >= len(self._group_order):
-                raise KPError("Given group doesn't exist in group order. "
-                              "Something went very wrong.")
-            index2 += 1
-
-        for i in reverse_children:
-            if index == -1:
-                self.move_group(i, -1, group)
+                    new_index = self.groups.index(parent.children[-1]) + 1
+                    self.groups.insert(new_index, group)
             else:
-                self.move_group(i, index+1, group)
+                new_index = self.groups.index(parent) + 1
+                self.groups.insert(new_index, group)
+            parent.children.append(group)
+            if parent is self._root_group:
+                group.level = 0
+            else:
+                group.level = parent.level + 1
+            if group.children: self._move_group_helper();
+            group.last_mod = datetime.now().replace(microsecond=0)
+            return True
+        else:
+            raise KPError("Didn't find given group.")
+            return False
+
+    def move_group_in_parent(self, group = None, index = None):
+        """Move group to another position in group's parent.
+        
+        index must be a valid index of group.parent.groups
+
+        """
+        
+        if group is None or index is None:
+            raise KPError("group and index must be set")
+            return False
+        elif type(group) is not StdGroup or type(index) is not int:
+            raise KPError("group must be a StdGroup-instance and index "
+                          "must be an integer.")
+            return False
+        elif group not in self.groups:
+            raise KPError("Given group doesn't exist")
+            return False
+        elif index < 0 or index >= len(group.parent.children):
+            raise KPError("index must be a valid index if group.parent.groups")
+            return False
+        else:
+            group_at_index = group.parent.children[index]
+            pos_in_parent = group.parent.children.index(group) 
+            pos_in_groups = self.groups.index(group)
+            pos_in_groups2 = self.groups.index(group_at_index)
+
+            group.parent.children[index] = group
+            group.parent.children[pos_in_parent] = group_at_index
+            self.groups[pos_in_groups2] = group
+            self.groups[pos_in_groups] = group_at_index
+            if group.children: self._move_group_helper(group);
+            if group_at_index.children: self._move_group_helper(group_at_index);
+            group.last_mod = datetime.now().replace(microsecond=0)
+            return True
+
+    def _move_group_helper(self, group):
+        """A helper to move the chidren of a group."""
+
+        for i in group.children:
+            self.groups.remove(i)
+            i.level = group.level + 1
+            self.group.insert(self.groups.index(group) + 1, i)
+            if i.children: self._move_group_helper(i);
 
     def create_entry(self, group = None, title = "", image = 1, url = "",
                      username = "", password = "", comment = "",
@@ -1151,13 +1075,6 @@ class KPDB(object):
         """This method creates a new entry.
         
         The group which should hold the entry is needed.
-        
-        There must be at least one of the following parameters given:
-            - an entry title
-            - an url
-            - an username
-            - a password
-            - a comment (all are strings)
 
         image must be an unsigned int >0, group a StdGroup.
         
@@ -1181,48 +1098,20 @@ class KPDB(object):
             type(group) is not StdGroup:
             raise KPError("One argument has not a valid type.")
             return False
-
-        # Search for the group.
-        for i in self.groups:
-            if group is i:
-                break
-            elif i is self.groups[-1]:
-                raise KPError("Group doesn't exist.")
-                return False
-        
-        if y > 9999 or y < 1 or mon > 12 or mon < 1 or d > 31 or d < 1 or \
+        elif group not in self.groups:
+            raise KPError("Group doesn't exist.")
+            return False
+        elif y > 9999 or y < 1 or mon > 12 or mon < 1 or d > 31 or d < 1 or \
             h > 23 or h < 0 or min_ > 59 or min_ < 0 or s > 59 or s < 0:
             raise KPError("No legal date")
             return False
-        
-        if ((mon == 1 or mon == 3 or mon == 5 or mon == 7 or mon == 8 or \
+        elif ((mon == 1 or mon == 3 or mon == 5 or mon == 7 or mon == 8 or \
              mon == 10 or mon == 12) and d > 31) or ((mon == 4 or mon == 6 or \
              mon == 9 or mon == 11) and d > 30) or (mon == 2 and d > 28):
             raise KPError("Given day doesn't exist in given month")
             return False
-            
-        if title == "" and url == "" and username == "" and \
-            password == "" and comment == "":
-            raise KPError("Need at least one attribute to create an"
-                          "entry.")
-            return False
         
         uuid = Random.get_random_bytes(16)
-        self._entry_order.append(("uuid", uuid))
-        self._entry_order.append((0x0001, 16))
-        self._entry_order.append((0x0002, 4))
-        self._entry_order.append((0x0003, 4))
-        self._entry_order.append((0x0004, len(title)+1))
-        self._entry_order.append((0x0005, len(url)+1))
-        self._entry_order.append((0x0006, len(username)+1))
-        self._entry_order.append((0x0007, len(password)+1))
-        self._entry_order.append((0x0008, len(comment)+1))
-        self._entry_order.append((0x0009, 5))
-        self._entry_order.append((0x000A, 5))
-        self._entry_order.append((0x000B, 5))
-        self._entry_order.append((0x000C, 5))
-        self._entry_order.append((0xFFFF, 0))
-        
         entry = StdEntry(group.id_, group, image, title, url, username,
                          password, comment, 
                          datetime.now().replace(microsecond = 0),
@@ -1233,7 +1122,6 @@ class KPDB(object):
         self._entries.append(entry)
         group.entries.append(entry)
         self._num_entries += 1
-        
         return True
 
     def remove_entry(self, entry = None):
@@ -1246,352 +1134,14 @@ class KPDB(object):
         if entry is None or type(entry) is not StdEntry:
             raise KPError("Need an entry.")
             return False
-        
-        for i in self._entries:
-            if entry is i:
-                i.group.entries.remove(i)
-                self._entries.remove(i)
-                break
-            elif i is self._entries[-1]:
-                raise KPError("Given entry doesn't exist.")
-                return False
-        
-        
-        index = 0
-        while True:
-            if self._entry_order[index][0] == "uuid" and \
-                self._entry_order[index][1] == entry.uuid:
-                while True:
-                    t = self._entry_order[index][0]
-                    del self._entry_order[index]
-                    if t == 0xFFFF:
-                        break
-                break
-            elif index+1 == len(self._entry_order):
-                raise KPError("Didn't find entry's information in entry order.")
-                return False
-            index += 1
-
-        self._num_entries -= 1
-        
-        return True
-
-    def set_entry_comment(self, entry = None, comment = None):
-        """This method is used to change an entry comment.
-
-        The StdEntry-object and the new comment string are needed.
-
-        """
-
-        if entry is None or comment is None or type(comment) is not str or \
-            type(entry) is not StdEntry:
-            raise KPError("Need an entry and a new comment")
+        elif entry in self._entries:
+            entry.group.entries.remove(entry)
+            self._entries.remove(entry)
+            self._num_entries -= 1
+            return True
+        else:
+            raise KPError("Given entry doesn't exist.")
             return False
-
-        for i in self._entries:
-            if i is entry:
-                if i.password == "" and i.title == "" and i.url == "" and \
-                    i.username == "" and comment == "":
-                    raise KPError("There must be at least one of the following" 
-                                  "arguments given:\n\t- an entry title\n"
-                                  "\t- an url\n"
-                                  "\t- an username\n"
-                                  "\t- a password\n"
-                                  "\t- a comment\n")
-                    return False
-                i.comment = comment
-                i.last_mod = datetime.now().replace(microsecond = 0)
-                break
-            elif i is self._entries[-1]:
-                raise KPError("Given entry doesn't exist.")
-                return False
-
-        index = 0
-        found = False
-        for i in self._entry_order:
-            if i[0] == "uuid" and i[1] == entry.uuid:
-                found = True
-            elif found is True and i[0] == 0x0008:
-                del self._entry_order[index]
-                self._entry_order.insert(index, (0x0008, len(comment)+1))
-                break
-            elif found is True and (i[0] == 0xFFFF or \
-                i is self._entry_order[-1]):
-                raise KPError("Given entry hasn't an comment. Something went "
-                              "very wrong.")
-                return False
-            elif found is False and index + 1 == len(self._entry_order):
-                raise KPError("Given entry doesn't exist in group order. "
-                              "Something went very wrong.")
-                return False
-            index += 1
-
-    def set_entry_title(self, entry = None, title = None):
-        """This method is used to change an entry title.
-
-        The StdEntry-object and the new title string are needed.
-        
-        """
-
-        if entry is None or title is None or type(title) is not str or \
-            type(entry) is not StdEntry:
-            raise KPError("Need an entry and a new title")
-            return False
-
-        for i in self._entries:
-            if i is entry:
-                if i.password == "" and title == "" and i.url == "" and \
-                    i.username == "" and i.comment == "":
-                    raise KPError("There must be at least one of the following" 
-                                  "arguments given:\n\t- an entry title\n"
-                                  "\t- an url\n"
-                                  "\t- an username\n"
-                                  "\t- a password\n"
-                                  "\t- a comment\n")
-                    return False
-                i.last_mod = datetime.now().replace(microsecond = 0)
-                i.title = title
-                break
-            elif i is self._entries[-1]:
-                raise KPError("Given entry doesn't exist.")
-                return False
-
-        index = 0
-        found = False
-        for i in self._entry_order:
-            if i[0] == "uuid" and i[1] == entry.uuid:
-                found = True
-            elif found is True and i[0] == 0x0004:
-                del self._entry_order[index]
-                self._entry_order.insert(index, (0x0004, len(title)+1))
-                break
-            elif found is True and (i[0] == 0xFFFF or \
-                i is self._entry_order[-1]):
-                raise KPError("Given entry hasn't an title. Something went "
-                              "very wrong.")
-                return False
-            elif found is False and index + 1 == len(self._entry_order):
-                raise KPError("Given entry doesn't exist in entry order. "
-                              "Something went very wrong.")
-                return False
-            index += 1
-
-    def set_entry_password(self, entry = None, password = None):
-        """This method is used to change an entry password.
-
-        The StdEntry-object and the new password string are needed.
-        
-        """
-
-        if entry is None or password is None or type(password) is not str or \
-            type(entry) is not StdEntry:
-            raise KPError("Need an entry and a new password")
-            return False
-
-        for i in self._entries:
-            if i is entry:
-                if password == "" and i.title == "" and i.url == "" and \
-                    i.username == "" and i.comment == "":
-                    raise KPError("There must be at least one of the following" 
-                                  "arguments given:\n\t- an entry title\n"
-                                  "\t- an url\n"
-                                  "\t- an username\n"
-                                  "\t- a password\n"
-                                  "\t- a comment\n")
-                    return False
-                i.last_mod = datetime.now().replace(microsecond = 0)
-                i.password = password
-                break
-            elif i is self._entries[-1]:
-                raise KPError("Given entry doesn't exist.")
-                return False
-
-        index = 0
-        found = False
-        for i in self._entry_order:
-            if i[0] == "uuid" and i[1] == entry.uuid:
-                found = True
-            elif found is True and i[0] == 0x0007:
-                del self._entry_order[index]
-                self._entry_order.insert(index, (0x0007, len(password)+1))
-                break
-            elif found is True and (i[0] == 0xFFFF or \
-                i is self._entry_order[-1]):
-                raise KPError("Given entry hasn't an password. Something went "
-                              "very wrong.")
-                return False
-            elif found is False and index + 1 == len(self._entry_order):
-                raise KPError("Given entry doesn't exist in group order. "
-                              "Something went very wrong.")
-                return False
-            index += 1
-
-    def set_entry_url(self, entry = None, url = None):
-        """This method is used to change an entry url.
-
-        The StdEntry-object and the new url string are needed.
-        
-        """
-
-        if entry is None or url is None or type(url) is not str or \
-            type(entry) is not StdEntry:
-            raise KPError("Need an entry and a new url")
-            return False
-
-        for i in self._entries:
-            if i is entry:
-                if i.password == "" and i.title == "" and url == "" and \
-                    i.username == "" and i.comment == "":
-                    raise KPError("There must be at least one of the following" 
-                                  "arguments given:\n\t- an entry title\n"
-                                  "\t- an url\n"
-                                  "\t- an username\n"
-                                  "\t- a password\n"
-                                  "\t- a comment\n")
-                    return False
-                i.last_mod = datetime.now().replace(microsecond = 0)
-                i.url = url
-                break
-            elif i is self._entries[-1]:
-                raise KPError("Given entry doesn't exist.")
-                return False
-
-        index = 0
-        found = False
-        for i in self._entry_order:
-            if i[0] == "uuid" and i[1] == entry.uuid:
-                found = True
-            elif found is True and i[0] == 0x0005:
-                del self._entry_order[index]
-                self._entry_order.insert(index, (0x0005, len(url)+1))
-                break
-            elif found is True and (i[0] == 0xFFFF or \
-                i is self._entry_order[-1]):
-                raise KPError("Given entry hasn't an url. Something went "
-                              "very wrong.")
-                return False
-            elif found is False and index + 1 == len(self._entry_order):
-                raise KPError("Given entry doesn't exist in group order. "
-                              "Something went very wrong.")
-                return False
-            index += 1
-
-    def set_entry_username(self, entry = None, username = None):
-        """This method is used to change an entry username.
-
-        The StdEntry-object and the new username string are needed.
-        
-        """
-
-        if entry is None or username is None or type(username) is not str or \
-            type(entry) is not StdEntry:
-            raise KPError("Need an entry and a new username")
-            return False
-
-        for i in self._entries:
-            if i is entry:
-                if i.password == "" and i.title == "" and i.url == "" and \
-                    username == "" and i.comment == "":
-                    raise KPError("There must be at least one of the following" 
-                                  "arguments given:\n\t- an entry title\n"
-                                  "\t- an url\n"
-                                  "\t- an username\n"
-                                  "\t- a password\n"
-                                  "\t- a comment\n")
-                    return False
-                i.last_mod = datetime.now().replace(microsecond = 0)
-                i.username = username
-                break
-            elif i is self._entries[-1]:
-                raise KPError("Given entry doesn't exist.")
-                return False
-
-        index = 0
-        found = False
-        for i in self._entry_order:
-            if i[0] == "uuid" and i[1] == entry.uuid:
-                found = True
-            elif found is True and i[0] == 0x0006:
-                del self._entry_order[index]
-                self._entry_order.insert(index, (0x0006, len(username)+1))
-                break
-            elif found is True and (i[0] == 0xFFFF or \
-                i is self._entry_order[-1]):
-                raise KPError("Given entry hasn't an username. Something went "
-                              "very wrong.")
-                return False
-            elif found is False and index + 1 == len(self._entry_order):
-                raise KPError("Given entry doesn't exist in group order. "
-                              "Something went very wrong.")
-                return False
-            index += 1
-
-    def set_entry_image(self, entry = None, image = None):
-        """This method is used to change the image number of an entry.
-
-        The StdEntry-object and the new unsigned int image are needed.
-        
-        """
-        
-        if entry is None or image is None or type(image) is not int or \
-            type(entry) is not StdEntry:
-            raise KPError("Need an entry and an image number!")
-            return False
-
-        for i in self._entries:
-            if i is entry:
-                i.image = image
-                i.last_mod = datetime.now().replace(microsecond = 0)
-                break
-            elif i is self.groups[-1]:
-                raise KPError("Given entry doesn't exist.")
-                return False
-        
-        return True
-
-    def set_entry_expire(self, entry = None, y = 2999, mon = 12, d = 28, h = 23,
-                         min_ = 59, s = 59):
-        """This method is used to change the expire date of an entry.
-
-            - y is the year between 1 and 9999 inclusive
-            - mon is the month between 1 and 12
-            - d is a day in the given month
-            - h is a hour between 0 and 23
-            - min_ is a minute between 0 and 59
-            - s is a second between 0 and 59
-
-        The special date 2999-12-28 23:59:59 means that entry expires never. If
-        only an uuid is given the expire date will set to this one.
-        
-        """
-
-        if entry is None or type(entry) is not StdEntry:
-            raise KPError("Need an entry")
-            return False
-        elif type(y) is not int or type(mon) is not int or type(d) is not int or \
-            type(h) is not int or type(min_) is not int or type(s) is not int:
-            raise KPError("Date variables must be ints")
-            return False
-        
-        if y > 9999 or y < 1 or mon > 12 or mon < 1 or d > 31 or d < 1 or \
-            h > 23 or h < 0 or min_ > 59 or min_ < 0 or s > 59 or s < 0:
-            raise KPError("No legal date")
-            return False
-        
-        if ((mon == 1 or mon == 3 or mon == 5 or mon == 7 or mon == 8 or \
-             mon == 10 or mon == 12) and d > 31) or ((mon == 4 or mon == 6 or \
-             mon == 9 or mon == 11) and d > 30) or (mon == 2 and d > 28):
-            raise KPError("Given day doesn't exist in given month")
-            return False
-
-        for i in self._entries:
-            if entry is i:
-                i.expire = datetime(y, mon, d, h, min_, s)
-                i.last_mod = datetime.now().replace(microsecond = 0)
-                return True
-            elif i is self._entries[-1]:
-                raise KPError("Given entry doesn't exist.")
-                return False
 
     def move_entry(self, entry = None, group = None):
         """Move an entry to another group.
@@ -1604,22 +1154,17 @@ class KPDB(object):
             type(group) is not StdGroup:
             raise KPError("Need an entry and a group.")
             return False
-
-        for i in self._entries:
-            if i is entry:
-                entry = i
-            elif i is self._entries[-1]:
-                raise KPError("No entry found.")
-                return False
-        
-        for i in self.groups:
-            if i is group:
-                entry.group.entries.remove(entry)
-                i.entries.append(entry)
-                entry.group_id = group.id_
-            elif i is self.groups[-1]:
-                raise KPError("No group found.")
-                return False
+        elif entry not in self._entries:
+            raise KPError("No entry found.")
+            return False
+        elif group in self.groups:
+            entry.group.entries.remove(entry)
+            group.entries.append(entry)
+            entry.group_id = group.id_
+            return True
+        else:
+            raise KPError("No group found.")
+            return False
                 
     def move_entry_in_group(self, entry = None, index = None):
         """Move entry to another position inside a group.
@@ -1638,51 +1183,20 @@ class KPDB(object):
         elif index < 0 or index > len(entry.group.entries)-1:
             raise KPError("Index is not valid.")
             return False
+        elif entry not in self._entries:
+            raise KPError("Entry not found.")
+            return False
         
-        pos = entry.group.entries.index(entry)
-        pos1 = entry.group.db._entries.index(entry)
-        offset = pos1 - pos
+        pos_in_group = entry.group.entries.index(entry)
+        pos_in_entries = self._entries.index(entry)
+        entry_at_index = entry.group.entries[index]
+        pos_in_entries2 = self._entries.index(entry_at_index)
 
-        if index <= pos:
-            temp = entry
-            entry.group.entries.remove(entry)
-            entry.group.db._entries.remove(entry)
-            entry.group.entries.insert(index, temp)
-            entry.group.db._entries.insert(index+offset, temp)
-        else:
-            entry.group.entries.insert(index+1, entry)
-            entry.group.db._entries.insert(index+offset, entry)
-            entry.group.entries.remove(entry)
-            entry.group.db._entries.remove(entry)
-
-        pos = index + offset
-        temp = []
-
-        for i in self._entry_order:
-            if i[0] == "uuid" and i[1] == entry.uuid:
-                index = self._entry_order.index(i)
-                index1 = index
-                while self._entry_order[index][0] != 0xFFFF:
-                    temp.append(self._entry_order[index])
-                    index += 1
-                temp.append(self._entry_order[index])
-                while self._entry_order[index1][0] != 0xFFFF:
-                    del self._entry_order[index1]
-                del self._entry_order[index1]
-                break
-
-        index = 0
-        index1 = 0
-        for i in self._entry_order:
-            if index1 == pos:
-                for j in temp:
-                    self._entry_order.insert(index, j)
-                break
-            elif i[0] == 0xFFFF:
-                index1 += 1
-            index += 1
-
-        return False
+        entry.group.entries[index] = entry
+        entry.group.entries[pos_in_group] = entry_at_index
+        self._entries[pos_in_entries2] = entry
+        self._entries[pos_in_entries] = entry_at_index
+        return True
 
     def _transform_key(self, masterkey):
         """This method creates the key to decrypt the database"""
@@ -1775,25 +1289,13 @@ class KPDB(object):
                                         'utf-8')
             decrypted_content = decrypted_content[1:]
         elif field_type == 0x0003:
-            # Not implemented by KeePassX but is defined by the original
-            # KeePass standard
-            # Will be implemented in a later release
-            pass
+            group.creation = self._get_date(decrypted_content)
         elif field_type == 0x0004:
-            # Not implemented by KeePassX but is defined by the original
-            # KeePass standard
-            # Will be implemented in a later release
-            pass
+            group.last_mod = self._get_date(decrypted_content)
         elif field_type == 0x0005:
-            # Not implemented by KeePassX but is defined by the original
-            # KeePass standard
-            # Will be implemented in a later release
-            pass
+            group.last_access = self._get_date(decrypted_content)
         elif field_type == 0x0006:
-            # Not implemented by KeePassX but is defined by the original
-            # KeePass standard
-            # Will be implemented in a later release
-            pass
+            group.expire = self._get_date(decrypted_content)
         elif field_type == 0x0007:
             group.image = struct.unpack('<I', decrypted_content[:4])[0]
         elif field_type == 0x0008:
@@ -1801,10 +1303,7 @@ class KPDB(object):
             group.level = level
             levels.append(level)
         elif field_type == 0x0009:
-            # Not implemented by KeePassX but is defined by the original
-            # KeePass standard
-            # Will be implemented in a later release
-            pass
+            group.flags = struct.unpack('<I', decrypted_content[:4])[0]
         elif field_type == 0xFFFF:
             pass
         else:
@@ -1848,17 +1347,13 @@ class KPDB(object):
                                         decrypted_content[:field_size-1])[0],
                                         'utf-8')
         elif field_type == 0x0009:
-            date = self._get_date(decrypted_content)
-            entry.creation = date
+            entry.creation = self._get_date(decrypted_content)
         elif field_type == 0x000A:
-            date = self._get_date(decrypted_content)
-            entry.last_mod = date
+            entry.last_mod = self._get_date(decrypted_content)
         elif field_type == 0x000B:
-            date = self._get_date(decrypted_content)
-            entry.last_access = date
+            entry.last_access = self._get_date(decrypted_content)
         elif field_type == 0x000C:
-            date = self._get_date(decrypted_content)
-            entry.expire = date
+            entry.expire = self._get_date(decrypted_content)
         elif field_type == 0x000D:
             entry.binary_desc = str(struct.unpack('<{0}s'.format(field_size-1),
                                        decrypted_content[:field_size-1])[0],
@@ -1944,87 +1439,89 @@ class KPDB(object):
                     self._entries[e].index = 0           
         return True
 
-    def _save_group_field(self, field_type, field_size, group):
+    def _save_group_field(self, field_type, group):
         """This method packs a group field"""
         
         if field_type == 0x0000:
             # Ignored (commentar block)
             pass
         elif field_type == 0x0001:
-            return struct.pack('<I', group.id_)
+            if group.id_ is not None:
+                return (4, struct.pack('<I', group.id_))
         elif field_type == 0x0002:
-            return (group.title+'\0').encode()
+            if group.title is not None:
+                return (len(group.title)+1, (group.title+'\0').encode())
         elif field_type == 0x0003:
-            # Not implemented by KeePassX but is defined by the original
-            # KeePass standard
-            # Will be implemented in a later release
-            pass
+            if group.creation is not None:
+                return (5, self._pack_date(group.creation))
         elif field_type == 0x0004:
-            # Not implemented by KeePassX but is defined by the original
-            # KeePass standard
-            # Will be implemented in a later release
-            pass
+            if group.last_mod is not None:
+                return (5, self._pack_date(group.last_mod))
         elif field_type == 0x0005:
-            # Not implemented by KeePassX but is defined by the original
-            # KeePass standard
-            # Will be implemented in a later release
-            pass
+            if group.last_access is not None:
+                return (5, self._pack_date(group.last_access))
         elif field_type == 0x0006:
-            # Not implemented by KeePassX but is defined by the original
-            # KeePass standard
-            # Will be implemented in a later release
-            pass
+            if group.expire is not None:
+                return (5, self._pack_date(group.expire))
         elif field_type == 0x0007:
-            return struct.pack('<I', group.image)
+            if group.image is not None:
+                return (4, struct.pack('<I', group.image))
         elif field_type == 0x0008:
-            return struct.pack('<H', group.level)
+            if group.level is not None:
+                return (2, struct.pack('<H', group.level))
         elif field_type == 0x0009:
-            # Not implemented by KeePassX but is defined by the original
-            # KeePass standard
-            # Will be implemented in a later release
-            pass
-        elif field_type == 0xFFFF:
-            pass
-        else:
-            return False
-        return True
+            if group.flags is not None:
+                return (4, struct.pack('<I', group.flags))
+        return False
 
-    def _save_entry_field(self, field_type, field_size, entry):
+    def _save_entry_field(self, field_type, entry):
         """This group packs a entry field"""
 
         if field_type == 0x0000:
             # Ignored
             pass
         elif field_type == 0x0001:
-            return entry.uuid
+            if entry.uuid is not None:
+                return (16, entry.uuid)
         elif field_type == 0x0002:
-            return struct.pack('<I', entry.group_id)
+            if entry.group_id is not None:
+                return (4, struct.pack('<I', entry.group_id))
         elif field_type == 0x0003:
-            return struct.pack('<I', entry.image)
+            if entry.image is not None:
+                return (4, struct.pack('<I', entry.image))
         elif field_type == 0x0004:
-            return  (entry.title+'\0').encode()
+            if entry.title is not None:
+                return (len(entry.title)+1, (entry.title+'\0').encode())
         elif field_type == 0x0005:
-            return (entry.url+'\0').encode()
+            if entry.url is not None:
+                return (len(entry.url)+1, (entry.url+'\0').encode())
         elif field_type == 0x0006:
-            return (entry.username+'\0').encode()
+            if entry.username is not None:
+                return (len(entry.username)+1, (entry.username+'\0').encode())
         elif field_type == 0x0007:
-            return (entry.password+'\0').encode()
+            if entry.password is not None:
+                return (len(entry.password)+1, (entry.password+'\0').encode())
         elif field_type == 0x0008:
-            return (entry.comment+'\0').encode()
+            if entry.comment is not None:
+                return (len(entry.comment)+1, (entry.comment+'\0').encode())
         elif field_type == 0x0009:
-            return self._pack_date(entry.creation)
+            if entry.creation is not None:
+                return (5, self._pack_date(entry.creation))
         elif field_type == 0x000A:
-            return self._pack_date(entry.last_mod)
+            if entry.last_mod is not None:
+                return (5, self._pack_date(entry.last_mod))
         elif field_type == 0x000B:
-            return self._pack_date(entry.last_access)
+            if entry.last_access is not None:
+                return (5, self._pack_date(entry.last_access))
         elif field_type == 0x000C:
-            return self._pack_date(entry.expire)
+            if entry.expire is not None:
+                return (5, self._pack_date(entry.expire))
         elif field_type == 0x000D:
-            return (entry.binary_desc+'\0').encode()
+            if entry.binary_desc is not None:
+                return (len(entry.binary_desc)+1,
+                        (entry.binary_desc+'\0').encode())
         elif field_type == 0x000E:
-            return entry.binary
-        elif field_type == 0xFFFF:
-            pass
-        else:
-            return False
-        return True
+            if entry.binary is not None:
+                return (len(entry.binary), entry.binary)
+        return False
+
