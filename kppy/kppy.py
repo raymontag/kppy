@@ -389,7 +389,8 @@ class KPDB(object):
     - groups holds all groups of the database. (list of StdGroups)
     - read_only declares if the file should be read-only or not (bool)
     - filepath holds the path of the database (string)
-    - masterkey is the passphrase to encrypt and decrypt the database (string)
+    - password is the passphrase to encrypt and decrypt the database (string)
+    - keyfile is the path to a keyfile (string)
     
     Usage:
     
@@ -673,6 +674,9 @@ class KPDB(object):
                 entry = StdEntry()
                 cur_entry += 1
             
+            print(field_type)
+            print(field_size)
+            print(decrypted_content[:field_size])
             decrypted_content = decrypted_content[field_size:]
             pos += field_size
             
@@ -1450,7 +1454,8 @@ class KPDB(object):
                 return (4, struct.pack('<I', group.id_))
         elif field_type == 0x0002:
             if group.title is not None:
-                return (len(group.title)+1, (group.title+'\0').encode())
+                return (len(group.title.encode())+1,
+                        (group.title+'\0').encode())
         elif field_type == 0x0003:
             if group.creation is not None:
                 return (5, self._pack_date(group.creation))
@@ -1491,19 +1496,23 @@ class KPDB(object):
                 return (4, struct.pack('<I', entry.image))
         elif field_type == 0x0004:
             if entry.title is not None:
-                return (len(entry.title)+1, (entry.title+'\0').encode())
+                return (len(entry.title.encode())+1,
+                         (entry.title+'\0').encode())
         elif field_type == 0x0005:
             if entry.url is not None:
-                return (len(entry.url)+1, (entry.url+'\0').encode())
+                return (len(entry.url.encode())+1, (entry.url+'\0').encode())
         elif field_type == 0x0006:
             if entry.username is not None:
-                return (len(entry.username)+1, (entry.username+'\0').encode())
+                return (len(entry.username.encode())+1,
+                        (entry.username+'\0').encode())
         elif field_type == 0x0007:
             if entry.password is not None:
-                return (len(entry.password)+1, (entry.password+'\0').encode())
+                return (len(entry.password.encode())+1,
+                        (entry.password+'\0').encode())
         elif field_type == 0x0008:
             if entry.comment is not None:
-                return (len(entry.comment)+1, (entry.comment+'\0').encode())
+                return (len(entry.comment.encode())+1,
+                       (entry.comment+'\0').encode())
         elif field_type == 0x0009:
             if entry.creation is not None:
                 return (5, self._pack_date(entry.creation))
@@ -1518,7 +1527,7 @@ class KPDB(object):
                 return (5, self._pack_date(entry.expire))
         elif field_type == 0x000D:
             if entry.binary_desc is not None:
-                return (len(entry.binary_desc)+1,
+                return (len(entry.binary_desc.encode())+1,
                         (entry.binary_desc+'\0').encode())
         elif field_type == 0x000E:
             if entry.binary is not None:
