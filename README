@@ -1,4 +1,4 @@
-kppy v.1.2
+kppy v.1.3
 ==========
 
 A Python-module to provide an API to KeePass 1.x files which are also used by
@@ -22,6 +22,7 @@ Features:
 ** Edit KP-files correctly and comfortable
 
 * Other features: 
+** First Python module for KeePass 1.x files that supports keyfiles, too.
 ** An included secure password generator (planned)
 ** Security features according to the KeePass 1.x standard like Twofish encryption (planned)
 

@@ -674,9 +674,6 @@ class KPDB(object):
                 entry = StdEntry()
                 cur_entry += 1
             
-            print(field_type)
-            print(field_size)
-            print(decrypted_content[:field_size])
             decrypted_content = decrypted_content[field_size:]
             pos += field_size
             
