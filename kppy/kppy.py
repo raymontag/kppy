@@ -1221,7 +1221,7 @@ class KPDB(object):
         """This method just hashes self.password."""
 
         sha = SHA256.new()
-        sha.update(self.password)
+        sha.update(self.password.encode('utf-8'))
         return sha.digest()
 
     def _get_filekey(self):
