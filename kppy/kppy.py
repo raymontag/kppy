@@ -846,7 +846,8 @@ class KPDB(object):
         """This method closes the database correctly."""
         
         if self.filepath is not None:
-            remove(self.filepath+'.lock')
+            if path.isfile(self.filepath+'.lock'):
+                remove(self.filepath+'.lock')
             self.filepath = None
             self.read_only = False
             self.lock()
