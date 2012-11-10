@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup( 
      name = "kppy", 
-     version = "1.3", 
+     version = "1.3.1", 
      author = "Karsten-Kai König", 
      author_email = "kkoenig@posteo.de",
      url = "http://www.nongnu.org/kppy/",
