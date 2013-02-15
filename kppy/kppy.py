@@ -1092,7 +1092,7 @@ class KPDB(object):
         
         """
         
-        if type(title) is not str or type(image) is not int or image < 1 or \
+        if type(title) is not str or type(image) is not int or image < 0 or \
             type(url) is not str or type(username) is not str or \
             type(password) is not str or type(comment) is not str or \
             type(y) is not int or type(mon) is not int or type(d) is not int or \
