@@ -1019,7 +1019,7 @@ class KPDB(object):
                 group.level = 0
             else:
                 group.level = parent.level + 1
-            if group.children: self._move_group_helper();
+            if group.children: self._move_group_helper(group);
             group.last_mod = datetime.now().replace(microsecond=0)
             return True
         else:
@@ -1067,7 +1067,7 @@ class KPDB(object):
         for i in group.children:
             self.groups.remove(i)
             i.level = group.level + 1
-            self.group.insert(self.groups.index(group) + 1, i)
+            self.groups.insert(self.groups.index(group) + 1, i)
             if i.children: self._move_group_helper(i);
 
     def create_entry(self, group = None, title = "", image = 1, url = "",
@@ -1286,9 +1286,14 @@ class KPDB(object):
         elif field_type == 0x0001:
             group.id_ = struct.unpack('<I', decrypted_content[:4])[0]
         elif field_type == 0x0002:
-            group.title = str(struct.unpack('<{0}s'.format(field_size-1),
-                                        decrypted_content[:field_size-1])[0],
-                                        'utf-8')
+            try:
+                group.title = str(struct.unpack('<{0}s'.format(field_size-1),
+                                            decrypted_content[:field_size-1])[0],
+                                            'utf-8')
+            except UnicodeDecodeError:
+                group.title = str(struct.unpack('<{0}s'.format(field_size-1),
+                                            decrypted_content[:field_size-1])[0],
+                                            'latin-1')
             decrypted_content = decrypted_content[1:]
         elif field_type == 0x0003:
             group.creation = self._get_date(decrypted_content)
