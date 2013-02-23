@@ -1,18 +1,15 @@
-kppy v.1.3
-==========
+kppy v.1.3.2
+============
 
 A Python-module to provide an API to KeePass 1.x files which are also used by
 the popular KeePassX.
 
 * License: GPL v3 or later
 * Author: Karsten-Kai König <kkoenig@posteo.de>
-* Stable download: http://download.savannah.gnu.org/releases/kppy/
-* Website: http://www.nongnu.org/kppy/
-* Bug tracker: http://savannah.nongnu.org/bugs/?group=kppy&func=additem
-* Git:
-** Savannah: git://git.savannah.nongnu.org/kppy.git
-** Github: git://github.com/raymontag/kppy.git
-** Gitorious: git://gitorious.org/kppy/kppy.git
+* Stable download: https://github.com/raymontag/kppy/tarball/master
+* Website: http://raymontag.github.com/kppy
+* Bug tracker: https://github.com/raymontag/kppy/issues?state=open
+* Git: git://github.com/raymontag/kppy.git
 
 Features:
 ---------
@@ -20,11 +17,16 @@ Features:
 * Full Access to KeePass 1.x/KeePassX files:
 ** Open, save and close KP-files correctly
 ** Edit KP-files correctly and comfortable
-
-* Other features: 
+** AES encryption
 ** First Python module for KeePass 1.x files that supports keyfiles, too.
-** An included secure password generator (planned)
-** Security features according to the KeePass 1.x standard like Twofish encryption (planned)
+** First Python-KeePass module for Python 3.
+
+* Some explanation to KeePass databases:
+** Database files are encrypted with AES
+** Database entries are sorted in groups
+** Groups support subgroups
+** Every entry has a title for better identification
+** Expiration dates for entries
 
 Dependencies:
 -------------
@@ -46,7 +48,9 @@ module, the password is saved as plain text in RAM. Even if
 the database was closed correctly it is possible that the password lies
 somewhere in your computer's RAM, it's not possible to prevent this in Python.
 That is, if your computer is compromised it is possible to dump the password
-from memory whether kppy tries to prevent this scenario.
+from memory. To prevent some scenarios you could change the working directory of
+Python to /var/empty on UNIX-like systems while using kppy. Are core dump wouldn't
+ be possible unless you're using kppy as root.
 
 Copyright (C) 2012 Karsten-Kai König <kkoenig@posteo.de>
 
