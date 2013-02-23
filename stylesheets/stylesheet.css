@@ -245,3 +245,13 @@ a {
 .cf {
   zoom:1;
 }
+
+div.code {
+  background-color :#CCCCCC;
+  color: #111;
+  padding: 4px 14px;
+  margin-left: 18px;
+  margin-right: 18px;
+  font-family: monospace;
+  white-space: pre;
+}

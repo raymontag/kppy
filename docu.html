@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <title>Kppy by raymontag</title>
+  </head>
+
+  <body>
+
+    <header>
+      <div class="container">
+        <h1>kppy</h1>
+        <h2>A Python-module to provide an API to KeePass 1.x files commonly used by KeePassX.</h2>
+
+        <section id="downloads">
+          <a href="https://github.com/raymontag/kppy/zipball/master" class="btn">Download as .zip</a>
+          <a href="https://github.com/raymontag/kppy/tarball/master" class="btn">Download as .tar.gz</a>
+          <a href="https://github.com/raymontag/kppy" class="btn btn-github"><span class="icon"></span>View on GitHub</a>
+        </section>
+      </div>
+    </header>
+
+    <div class="container">
+      <section id="main_content">
+        <h1>Introduction</h1>
+<h3>Basic usage</h3>
+<p>First of all you need to import KPDB, the database class. Also you should import KPError, the exception class.</p>
+
+<div class='code'>from kppy import KPDB, KPError</div>
+
+<p>Nearly everything can throw KPError-exceptions, that is you should execute such code always
+in a try block, for example let's open a database:</p>
+
+<div class='code'>try:
+    db = KPDB("foo.kdb", "bar")
+except KPError as err:
+    print(err)</div>
+
+<p>".kdb" is the standard file extension of KeePass/KeePassX databases. You should not break with this convention.</p>
+
+<p>All methods (except __init__, of course) return "True" if everything went right or "False" if not.
+
+<p>Due to security reasons I recommend that you change the working directory with "os.chdir" to /var/empty to prevent the simple creating of core dumps.</p>
+
+<p>Remark: In the following "db" means a KPDB-instance, "group" a StdGroup-instance and "entry" a StdEntry-instance (compare API-reference).</p>
+
+<h3>The database itself</h3>
+
+<p>You can open existing databases or create new ones. Both will be done with the KPDB-constructor. Also it's possible
+to open databases read-only. First, let's see how to open an existing database:</p>
+
+<div class='code'>db = KPDB("foo.kdb", "bar")</div>
+
+<p>In this case "foo.kdb" is the path to the file and "bar" is the password. Both will be stored in the database object in "db.filepath" respectively "db.masterkey". If you want to open the database read-only (default is you want not), do it like that:</p>
+
+<div class='code'>db = KPDB("foo.kdb", "bar", read_only = True)</div>
+
+<p>You can always change the read-only behaviour by setting "db.read_only" to "True" respecively "False".</p>
+
+<p>It's possible to use keyfile authentication, too.</p>
+
+<div class='code'>db = KPDB("foo.kdb", None, "bar")</div>
+<div class='code'>db = KPDB("foo.kdb", "foo", "bar")</div>
+
+<p>In the first example only a keyfile with the path "bar" is used, in the second a password and a keyfile are used</p>
+
+<p>If you implement a program with kppy you should check if there is a file called "foo.kdb.lock" in the same directory with "foo.kdb". This file exists in two cases: Another program access the database or the database wasn't closed correctly. In any case you should ask the user, if the database should accessed read-only to prevent damage. That's the default behaviour of KeePass/KeePassX.</p>
+
+<p>Creating a new database is very simple:</p>
+
+<div class='code'>db = KPDB(new=True)</div>
+
+<p>This initializes a new database object with a single group, called "Internet" (there must be at least one group). To save this new database simple call "save"</p>
+
+<div class='code'>db.save("foo.kdb", "bar")</div>
+
+<p>Here we used that we can parse a filepath and a password to "save". If you parse a filepath to "save" and "db.filepath" is not set, kppy will automatically set "db.filepath" to this filepath. Otherwise the database will be saved to that filepath but "db.filepath" remains unaffected. If you parse a passphrase it will always set "db.password" to this one. Also "save" creates the file "foo.kdb.lock" if it doesn't exists.</p>
+
+<p>It's possible to lock a database, that is it is not possible to access the data but "foo.kdb.lock" remains, so that other programs know that another work with it.</p>
+
+<div class='code'>db.lock()</div>
+
+<p>Unlocking is just that simple, either set the masterkey to the original one and call "load" or just call "unlock" with the password:</p>
+
+<div class='code'>db.unlock("bar")</div>
+
+<p>To close a database correct call "close" before you delete the object with "del db":</p>
+
+<div class='code'>db.close()
+del db</div>
+
+<p>"close" expect that "db.filepath" is set, otherwise an error is raised, that is you can only close an opened database.</p>
+
+<h2>Groups</h2>
+<p>Creating a group is very simple, just call "create_group" with a title:</p>
+
+<div class='code'>db.create_group("group_title")</div>
+
+<p>Now the database has two groups (remember that the group "Internet" was created during database creation).  Every database has a list which holds references to all groups called "groups". For example, to access the new group you can type the following:</p>
+
+<div class='code'>db.groups[1]</div>
+
+<p>Removing a group is easy. You just need the group object:</p>
+
+<div class='code'>db.groups[0].remove_group()</div>
+
+<p>Every group can contain sub-groups. Due to this a group has one parent and can have multiple children. You can access these via "group.parent" and "group.children", where the former is a StdGroup-instance and the latter is a list of StdGroup-instances. If you want to set the parent during creation of the database you can doing this by parsing the parent to "db.create_group"</p>
+
+<div class='code'>db.create_group("foobar", db.groups[0])</div>
+
+<p>The result would be the following order:<br>
+Internet<br>
+- foobar<br></p>
+
+<p>You should never manipulate "db.groups" or "group.parent" respectively "group.children" with Python-methods. Instead use "group.move_group()". You must parse a valid index to "move_group" and can parse a new parent where "parent" is the parent-object. Simple example: You have following group order:<br>
+group_1<br>
+group_2<br>
+group_3<br></p>
+
+<p>To put "group_3" to the beginning of the list do the following:</p>
+
+<div class='code'>db.groups[2].move_group_in_parent(0)</div>
+
+<p>The result is<br>
+group_3<br>
+group_1<br>
+group_2<br></p>
+
+<p>Another example:</p>
+
+<div class='code'>db.groups[2].move_group(db.groups[0])</div>
+
+<p>The result is:<br>
+group_1<br>
+- group_3<br>
+group_2<br></p>
+
+<p>One remark: If a group has children these will be moved with it parent automatically if you move the parent.</p>
+
+<p>As I mentioned above every group has a title. If you want to edit it just use "group.set_title("foobar")". Also every group has an attribute called "image". This is a number used by KeePass/KeePassX to set a little image next to the group title. If you want to use this, just set it with "group.set_image()" where the argument must be an unsigned integer. The standard value is 1. If you want to set it during creation you can do this by "db.create_group("foobar", image = 5)". It's also possible to set the attributes directly (e.g. group.title = "foobar") but it's not recommend because "group.set_title" does some checks on the new attribute and changes also the modification-date.</p>
+
+<h3>Entries</h3>
+<p>All groups can contain entries. These holds information like a username and a corresponding password. You can access the entries via a list that every group contains, "group.entries". There are several methods to create an entry: You can call "db.create_entry" or "group.create_entry". In both cases you can parse the following arguments: a title, an image number (like image number for groups), an url, an username, a password, a comment and an expiration date (in this order). If you parse an expiration date you must parse a year, a month, a day, a hour, a minutes and a second (in this order). The standard value is "2999-12-28 23:59:59", that means the entry expires never. Attention: If you use "db.create_entry" the first argument must be a valid group object. You can change all values, information can be found in the API documentation, it's similar to the group stuff.</p>
+
+<p>If you want to move an entry to another group use "entry.move_group". You must just parse the group object to this method.</p>
+
+<p>This was only a small introduction. More information can be found in the API-reference created with pydoc: <a href="kppy.html">API-reference</a></p>
+ 
+<small><p>Copyright (C) 2012 Karsten-Kai König &#60;<a href="mailto:kkoenig@posteo.de">kkoenig@posteo.de</a>&#62;
+    </div>
+  </body>
+</html>
