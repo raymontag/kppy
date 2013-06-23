@@ -1163,6 +1163,7 @@ class KPDB(object):
             entry.group.entries.remove(entry)
             group.entries.append(entry)
             entry.group_id = group.id_
+            entry.group = group
             return True
         else:
             raise KPError("No group found.")
