@@ -76,10 +76,9 @@ class KPDBv1(object):
         """
         
         
-        if ((filepath is None and (password is not None or 
-            keyfile is not None)) or filepath is not None and
-            (password is None and keyfile is None)):
-            raise KPError('Missing argument: file path, password or keyfile '
+     
+        if filepath is not None and password is None and keyfile is None:
+            raise KPError('Missing argument: Password or keyfile '
                           'needed additionally to open an existing database!')
             return
         elif type(read_only) is not bool or type(new) is not bool:
@@ -120,12 +119,8 @@ class KPDBv1(object):
         self._transf_randomseed = Random.get_random_bytes(32)
         self._key_transf_rounds = 50000
 
-        # Load an existing database
-        if (filepath is not None and (password is not None or 
-            keyfile is not None)):
-            self.load()
         # Due to the design of KeePass, at least one group is needed.
-        elif new is True:
+        if new is True:
             self._group_order = [("id", 1), (1,4), (2,9), (7,4), (8,2),
                                  (0xFFFF, 0)]
             group = v1Group(1, 'Internet', 1, self, parent = self.root_group)
@@ -321,12 +316,9 @@ class KPDBv1(object):
         del decrypted_content
         del crypted_content
 
-        try:
-            handler = open(self.filepath+'.lock', 'w')
-            handler.write('')
-        finally:
-            handler.close()
-
+        if self.filepath is not None:
+            with open(self.filepath+'.lock', 'w') as handler:
+                handler.write('')
         return True
 
     def read_buf(self):
@@ -515,7 +507,7 @@ class KPDBv1(object):
         self._num_entries = 0
         return True
 
-    def unlock(self, password = None, keyfile = None):
+    def unlock(self, password = None, keyfile = None, buf = None):
         """Unlock the database.
         
         masterkey is needed.
@@ -534,7 +526,7 @@ class KPDBv1(object):
         if password == "": password = None;
         self.password = password
         self.keyfile = keyfile
-        return self.load() 
+        return self.load(buf) 
 
     def create_group(self, title = None, parent = None, image = 1,
                      y = 2999, mon = 12, d = 28, h = 23, min_ = 59,
