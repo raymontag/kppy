@@ -402,6 +402,7 @@ class KPDBv1(object):
             content += struct.pack('<I', 0)
 
         # Generate new seed and new vector; calculate the new hash
+        Random.atfork()
         self._final_randomseed = Random.get_random_bytes(16)
         self._enc_iv = Random.get_random_bytes(16)
         sha_obj = SHA256.new()

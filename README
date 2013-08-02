@@ -49,7 +49,7 @@ the database was closed correctly it is possible that the password lies
 somewhere in your computer's RAM, it's not possible to prevent this in Python.
 That is, if your computer is compromised it is possible to dump the password
 from memory. To prevent some scenarios you could change the working directory of
-Python to /var/empty on UNIX-like systems while using kppy. Are core dump wouldn't
+Python to /var/empty on UNIX-like systems while using kppy. A core dump wouldn't
  be possible unless you're using kppy as root.
 
 Copyright (C) 2012 Karsten-Kai König <kkoenig@posteo.de>
