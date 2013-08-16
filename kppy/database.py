@@ -80,20 +80,16 @@ class KPDBv1(object):
         if filepath is not None and password is None and keyfile is None:
             raise KPError('Missing argument: Password or keyfile '
                           'needed additionally to open an existing database!')
-            return
         elif type(read_only) is not bool or type(new) is not bool:
             raise KPError('read_only and new must be bool')
-            return
         elif ((filepath is not None and type(filepath) is not str) or
               (type(password) is not str and password is not None) or
               (type(keyfile) is not str and keyfile is not None)):
             raise KPError('filepath, masterkey and keyfile must be a string')
-            return
         elif (filepath is None and password is None and keyfile is None and 
               new is False):
             raise KPError('Either an existing database should be opened or '
                           'a new should be created.')
-            return
 
         self.groups = []
         self.entries = []
@@ -116,12 +112,13 @@ class KPDBv1(object):
         self._num_groups = 1
         self._num_entries = 0
         self._contents_hash = ''
+        Random.atfork()
         self._transf_randomseed = Random.get_random_bytes(32)
-        self._key_transf_rounds = 50000
+        self._key_transf_rounds = 150000
 
         # Due to the design of KeePass, at least one group is needed.
         if new is True:
-            self._group_order = [("id", 1), (1,4), (2,9), (7,4), (8,2),
+            self._group_order = [("id", 1), (1, 4), (2, 9), (7, 4), (8, 2),
                                  (0xFFFF, 0)]
             group = v1Group(1, 'Internet', 1, self, parent = self.root_group)
             self.root_group.children.append(group)
@@ -150,17 +147,16 @@ class KPDBv1(object):
         # The header holds two signatures
         if not (struct.unpack('<I', header[:4])[0] == 0x9AA2D903 and
                 struct.unpack('<I', header[4:8])[0] == 0xB54BFB65):
-            raise KPError('Wrong signatures!')
             del crypted_content
             del header
-            return False
+            raise KPError('Wrong signatures!')
 
         # Unpack the header
         self._enc_flag = struct.unpack('<I', header[8:12])[0]
         self._version = struct.unpack('<I', header[12:16])[0]
         self._final_randomseed = struct.unpack('<16s', header[16:32])[0]
         self._enc_iv = struct.unpack('<16s', header[32:48])[0]
-        self._num_groups= struct.unpack('<I', header[48:52])[0]
+        self._num_groups = struct.unpack('<I', header[48:52])[0]
         self._num_entries = struct.unpack('<I', header[52:56])[0]
         self._contents_hash = struct.unpack('<32s', header[56:88])[0]
         self._transf_randomseed = struct.unpack('<32s', header[88:120])[0]
@@ -169,14 +165,12 @@ class KPDBv1(object):
 
         # Check if the database is supported
         if self._version & 0xFFFFFF00 != 0x00030002 & 0xFFFFFF00:
-            raise KPError('Unsupported file version!')
             del crypted_content
-            return False
+            raise KPError('Unsupported file version!')
         #Actually, only AES is supported.
         elif not self._enc_flag & 2:
-            raise KPError('Unsupported file encryption!')
             del crypted_content
-            return False
+            raise KPError('Unsupported file encryption!')
         
         if self.password is None:
             masterkey = self._get_filekey()
@@ -197,18 +191,18 @@ class KPDBv1(object):
         # Check if decryption failed
         if ((len(decrypted_content) > 2147483446) or
             (len(decrypted_content) == 0 and self._num_groups > 0)):
-            raise KPError("Decryption failed!\nThe key is wrong or the file is"
-                          " damaged.")
             del decrypted_content
             del crypted_content
-            return False
+            raise KPError("Decryption failed!\nThe key is wrong or the file is"
+                          " damaged.")
 
         sha_obj = SHA256.new()
         sha_obj.update(decrypted_content)
         if not self._contents_hash == sha_obj.digest():
+            del masterkey
+            del final_key
             raise KPError("Hash test failed.\nThe key is wrong or the file is "
                           "damaged.")
-            return False
         del masterkey
         del final_key
 
@@ -226,20 +220,18 @@ class KPDBv1(object):
 
             # Check if offset is alright
             if pos >= len(crypted_content)+124:
-                raise KPError('Unexpected error: Offset is out of range.[G1]')
                 del decrypted_content
                 del crypted_content
-                return False
+                raise KPError('Unexpected error: Offset is out of range.[G1]')
             
             field_size = struct.unpack('<I', decrypted_content[:4])[0]
             decrypted_content = decrypted_content[4:]
             pos += 4
             
             if pos >= len(crypted_content)+124:
-                raise KPError('Unexpected error: Offset is out of range.[G2]')
                 del decrypted_content
                 del crypted_content
-                return False
+                raise KPError('Unexpected error: Offset is out of range.[G2]')
 
             # Finally read out the content
             b_ret = self._read_group_field(group, levels, field_type,
@@ -255,10 +247,9 @@ class KPDBv1(object):
             decrypted_content = decrypted_content[field_size:]
 
             if pos >= len(crypted_content)+124:
-                raise KPError('Unexpected error: Offset is out of range.[G1]')
                 del decrypted_content
                 del crypted_content
-                return False
+                raise KPError('Unexpected error: Offset is out of range.[G1]')
 
         # Now the same with the entries
         cur_entry = 0
@@ -270,20 +261,18 @@ class KPDBv1(object):
             pos += 2
              
             if pos >= len(crypted_content)+124:
-                raise KPError('Unexpected error: Offset is out of range.[G1]')
                 del decrypted_content
                 del crypted_content
-                return False
+                raise KPError('Unexpected error: Offset is out of range.[G1]')
             
             field_size = struct.unpack('<I', decrypted_content[:4])[0]
             decrypted_content = decrypted_content[4:]
-            pos +=4
+            pos += 4
             
             if pos >= len(crypted_content)+124:
-                raise KPError('Unexpected error: Offset is out of range.[G2]')
                 del decrypted_content
                 del crypted_content
-                return False
+                raise KPError('Unexpected error: Offset is out of range.[G2]')
             
             b_ret = self._read_entry_field(entry, field_type, field_size,
                                       decrypted_content)
@@ -291,10 +280,9 @@ class KPDBv1(object):
             if field_type == 0xFFFF and b_ret == True:
                 self.entries.append(entry)
                 if entry.group_id is None:
-                    raise KPError("Found entry without group!")
                     del decrypted_content
                     del crypted_content
-                    return False
+                    raise KPError("Found entry without group!")
 
                 entry = v1Entry()
                 cur_entry += 1
@@ -303,10 +291,9 @@ class KPDBv1(object):
             pos += field_size
             
             if pos >= len(crypted_content)+124:
-                raise KPError('Unexpected error: Offset is out of range.[G1]')
                 del decrypted_content
                 del crypted_content
-                return False
+                raise KPError('Unexpected error: Offset is out of range.[G1]')
 
         if self._create_group_tree(levels) is False:
             del decrypted_content
@@ -357,21 +344,17 @@ class KPDBv1(object):
 
         if self.read_only:
             raise KPError("The database has been opened read-only.")
-            return False
         elif ((self.password is None and self.keyfile is None) or 
               (filepath is None and self.filepath is None) or 
               (keyfile == "" and password == "")):
             raise KPError("Need a password/keyfile and a filepath to save the "
                           "file.")
-            return False
         elif ((type(self.filepath) is not str and self.filepath is not None) or
               (type(self.password) is not str and self.password is not None) or
               (type(self.keyfile) is not str and self.keyfile is not None)):
             raise KPError("filepath, password and keyfile  must be strings.")
-            return False
         elif self._num_groups == 0:
             raise KPError("Need at least one group!")
-            return False
         
         content = bytearray()
 
@@ -379,7 +362,7 @@ class KPDBv1(object):
         for i in self.groups:
             # Get the packed bytes
             # j stands for a possible field type
-            for j in range(1,10):
+            for j in range(1, 10):
                 ret_save = self._save_group_field(j, i)
                 # The field type and the size is always in front of the data
                 if ret_save is not False:
@@ -422,6 +405,8 @@ class KPDBv1(object):
         header += struct.pack('<I', self._num_entries)
         header += struct.pack('<32s', self._contents_hash)
         header += struct.pack('<32s', self._transf_randomseed)
+        if self._key_transf_rounds < 150000:
+            self._key_tranf_rounds = 150000
         header += struct.pack('<I', self._key_transf_rounds)
 
         # Finally encrypt everything...
@@ -447,7 +432,6 @@ class KPDBv1(object):
                 handler = open(filepath, "wb")
             except IOError:
                 raise KPError("Can't open {0}".format(filepath))
-                return False
             if self.filepath is None:
                 self.filepath = filepath
         elif filepath is None and self.filepath is not None:
@@ -455,27 +439,23 @@ class KPDBv1(object):
                 handler = open(self.filepath, "wb")
             except IOError:
                 raise KPError("Can't open {0}".format(self.filepath))
-                return False
         else:
             raise KPError("Need a filepath.")
-            return False
 
         try:
             handler.write(header+encrypted_content)
         except IOError:
             raise KPError("Can't write to file.")
-            return False
         finally:
             handler.close()
         
         if not path.isfile(self.filepath+".lock"):
             try:
-                lock= open(self.filepath+".lock", "w")
+                lock = open(self.filepath+".lock", "w")
                 lock.write('')
             except IOError:
                 raise KPError("Can't create lock-file {0}".format(self.filepath
                                                                   +".lock"))
-                return False
             else:
                 lock.close()
         return True
@@ -492,7 +472,6 @@ class KPDBv1(object):
             return True
         else:
             raise KPError('Can\'t close a not opened file')
-            return False
 
     def lock(self):
         """This method locks the database."""
@@ -518,13 +497,13 @@ class KPDBv1(object):
         if ((password is None or password == "") and (keyfile is None or
              keyfile == "")):
             raise KPError("A password/keyfile is needed")
-            return False
         elif ((type(password) is not str and password is not None) or
               (type(keyfile) is not str and keyfile is not None)):
             raise KPError("password/keyfile must be a string.")
-            return False
-        if keyfile == "": keyfile = None;
-        if password == "": password = None;
+        if keyfile == "":
+            keyfile = None
+        if password == "":
+            password = None
         self.password = password
         self.keyfile = keyfile
         return self.load(buf) 
@@ -547,11 +526,9 @@ class KPDBv1(object):
         
         if title is None:
             raise KPError("Need a group title to create a group.")
-            return False
         elif type(title) is not str or image < 1 or(parent is not None and \
             type(parent) is not v1Group) or type(image) is not int:
             raise KPError("Wrong type or value for title or image or parent")
-            return False
 
         id_ = 1
         for i in self.groups:
@@ -561,7 +538,7 @@ class KPDBv1(object):
         group.creation = datetime.now().replace(microsecond=0)
         group.last_mod = datetime.now().replace(microsecond=0)
         group.last_access = datetime.now().replace(microsecond=0)
-        if group.set_expire(y,mon,d,h,min_,s) is False:
+        if group.set_expire(y, mon, d, h, min_, s) is False:
             group.set_expire()
         
         # If no parent is given, just append the new group at the end
@@ -579,7 +556,6 @@ class KPDBv1(object):
                 self.groups.insert(self.groups.index(parent)+1, group)
             else:
                 raise KPError("Given parent doesn't exist")
-                return False
         self._num_groups += 1
         return True
 
@@ -594,10 +570,8 @@ class KPDBv1(object):
 
         if group is None:
             raise KPError("Need group to remove a group")
-            return False
         elif type(group) is not v1Group:
             raise KPError("group must be v1Group")
-            return False
 
         children = []
         entries = []
@@ -611,7 +585,6 @@ class KPDBv1(object):
             self.groups.remove(group)
         else:
             raise KPError("Given group doesn't exist")
-            return False
         self._num_groups -= 1
         
         for i in children:
@@ -629,14 +602,12 @@ class KPDBv1(object):
 
         if group is None or type(group) is not v1Group:
             raise KPError("A valid group must be given.")
-            return False
         elif parent is not None and type(parent) is not v1Group:
             raise KPError("parent must be a v1Group.")
-            return False
         elif group is parent:
             raise KPError("group and parent must not be the same group")
-            return False
-        if parent is None: parent = self.root_group;
+        if parent is None:
+            parent = self.root_group
         if group in self.groups:
             self.groups.remove(group)
             group.parent.children.remove(group)
@@ -655,12 +626,12 @@ class KPDBv1(object):
                 group.level = 0
             else:
                 group.level = parent.level + 1
-            if group.children: self._move_group_helper(group);
+            if group.children:
+                self._move_group_helper(group)
             group.last_mod = datetime.now().replace(microsecond=0)
             return True
         else:
             raise KPError("Didn't find given group.")
-            return False
 
     def move_group_in_parent(self, group = None, index = None):
         """Move group to another position in group's parent.
@@ -671,17 +642,13 @@ class KPDBv1(object):
         
         if group is None or index is None:
             raise KPError("group and index must be set")
-            return False
         elif type(group) is not v1Group or type(index) is not int:
             raise KPError("group must be a v1Group-instance and index "
                           "must be an integer.")
-            return False
         elif group not in self.groups:
             raise KPError("Given group doesn't exist")
-            return False
         elif index < 0 or index >= len(group.parent.children):
             raise KPError("index must be a valid index if group.parent.groups")
-            return False
         else:
             group_at_index = group.parent.children[index]
             pos_in_parent = group.parent.children.index(group) 
@@ -692,8 +659,10 @@ class KPDBv1(object):
             group.parent.children[pos_in_parent] = group_at_index
             self.groups[pos_in_groups2] = group
             self.groups[pos_in_groups] = group_at_index
-            if group.children: self._move_group_helper(group);
-            if group_at_index.children: self._move_group_helper(group_at_index);
+            if group.children:
+                self._move_group_helper(group)
+            if group_at_index.children:
+                self._move_group_helper(group_at_index)
             group.last_mod = datetime.now().replace(microsecond=0)
             return True
 
@@ -704,7 +673,8 @@ class KPDBv1(object):
             self.groups.remove(i)
             i.level = group.level + 1
             self.groups.insert(self.groups.index(group) + 1, i)
-            if i.children: self._move_group_helper(i);
+            if i.children:
+                self._move_group_helper(i)
 
     def create_entry(self, group = None, title = "", image = 1, url = "",
                      username = "", password = "", comment = "",
@@ -735,20 +705,17 @@ class KPDBv1(object):
             type(h) is not int or type(min_) is not int or type(s) is not int or\
             type(group) is not v1Group:
             raise KPError("One argument has not a valid type.")
-            return False
         elif group not in self.groups:
             raise KPError("Group doesn't exist.")
-            return False
         elif y > 9999 or y < 1 or mon > 12 or mon < 1 or d > 31 or d < 1 or \
             h > 23 or h < 0 or min_ > 59 or min_ < 0 or s > 59 or s < 0:
             raise KPError("No legal date")
-            return False
         elif ((mon == 1 or mon == 3 or mon == 5 or mon == 7 or mon == 8 or \
              mon == 10 or mon == 12) and d > 31) or ((mon == 4 or mon == 6 or \
              mon == 9 or mon == 11) and d > 30) or (mon == 2 and d > 28):
             raise KPError("Given day doesn't exist in given month")
-            return False
         
+        Random.atfork()
         uuid = Random.get_random_bytes(16)
         entry = v1Entry(group.id_, group, image, title, url, username,
                          password, comment, 
@@ -771,7 +738,6 @@ class KPDBv1(object):
         
         if entry is None or type(entry) is not v1Entry:
             raise KPError("Need an entry.")
-            return False
         elif entry in self.entries:
             entry.group.entries.remove(entry)
             self.entries.remove(entry)
@@ -779,7 +745,6 @@ class KPDBv1(object):
             return True
         else:
             raise KPError("Given entry doesn't exist.")
-            return False
 
     def move_entry(self, entry = None, group = None):
         """Move an entry to another group.
@@ -791,10 +756,8 @@ class KPDBv1(object):
         if entry is None or group is None or type(entry) is not v1Entry or \
             type(group) is not v1Group:
             raise KPError("Need an entry and a group.")
-            return False
         elif entry not in self.entries:
             raise KPError("No entry found.")
-            return False
         elif group in self.groups:
             entry.group.entries.remove(entry)
             group.entries.append(entry)
@@ -803,7 +766,6 @@ class KPDBv1(object):
             return True
         else:
             raise KPError("No group found.")
-            return False
                 
     def move_entry_in_group(self, entry = None, index = None):
         """Move entry to another position inside a group.
@@ -818,13 +780,10 @@ class KPDBv1(object):
         if entry is None or index is None or type(entry) is not v1Entry \
             or type(index) is not int:
             raise KPError("Need an entry and an index.")
-            return False
         elif index < 0 or index > len(entry.group.entries)-1:
             raise KPError("Index is not valid.")
-            return False
         elif entry not in self.entries:
             raise KPError("Entry not found.")
-            return False
         
         pos_in_group = entry.group.entries.index(entry)
         pos_in_entries = self.entries.index(entry)
@@ -865,14 +824,11 @@ class KPDBv1(object):
     def _get_filekey(self):
         """This method creates a key from a keyfile."""
 
-        try:
-            handler = open(self.keyfile, 'rb')
-            buf = handler.read()
-        except:
-            raise KPError('Could not open file.')
-            return False
-        finally:
-            handler.close()
+        with open(self.keyfile, 'rb') as handler:
+            try:
+                buf = handler.read()
+            except:
+                raise KPError('Could not read file.')
         sha = SHA256.new()
         if len(buf) == 33:
             sha.update(buf)
@@ -1049,7 +1005,6 @@ class KPDBv1(object):
 
         if levels[0] != 0:
             raise KPError("Invalid group tree")
-            return False
         
         for i in range(len(self.groups)):
             if(levels[i] == 0):
@@ -1063,7 +1018,6 @@ class KPDBv1(object):
                 if levels[j] < levels[i]:
                     if levels[i]-levels[j] != 1:
                         raise KPError("Invalid group tree")
-                        return False
                     
                     self.groups[i].parent = self.groups[j]
                     self.groups[i].index = len(self.groups[j].children)
@@ -1071,7 +1025,6 @@ class KPDBv1(object):
                     break
                 if j == 0:
                     raise KPError("Invalid group tree")
-                    return False
                 j -= 1
             
         for e in range(len(self.entries)):
