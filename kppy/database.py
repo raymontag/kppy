@@ -17,6 +17,7 @@ kppy.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 import binascii
+import sys
 import struct
 from datetime import datetime
 from os import remove, path
@@ -852,6 +853,10 @@ class KPDBv1(object):
         aes = AES.new(final_key, AES.MODE_CBC, self._enc_iv)
         decrypted_content = aes.decrypt(crypted_content)
         padding = decrypted_content[-1]
+        if sys.version > '3':
+            padding = decrypted_content[-1]
+        else:
+            padding = ord(decrypted_content[-1])
         decrypted_content = decrypted_content[:len(decrypted_content)-padding]
         
         return decrypted_content
@@ -879,13 +884,11 @@ class KPDBv1(object):
             group.id_ = struct.unpack('<I', decrypted_content[:4])[0]
         elif field_type == 0x0002:
             try:
-                group.title = str(struct.unpack('<{0}s'.format(field_size-1),
-                                            decrypted_content[:field_size-1])[0],
-                                            'utf-8')
+                group.title = struct.unpack('<{0}s'.format(field_size-1),
+                    decrypted_content[:field_size-1])[0].decode('utf-8')
             except UnicodeDecodeError:
-                group.title = str(struct.unpack('<{0}s'.format(field_size-1),
-                                            decrypted_content[:field_size-1])[0],
-                                            'latin-1')
+                group.title = struct.unpack('<{0}s'.format(field_size-1),
+                    decrypted_content[:field_size-1])[0].decode('latin-1')
             decrypted_content = decrypted_content[1:]
         elif field_type == 0x0003:
             group.creation = self._get_date(decrypted_content)
@@ -923,28 +926,23 @@ class KPDBv1(object):
         elif field_type == 0x0003:
             entry.image = struct.unpack('<I', decrypted_content[:4])[0]
         elif field_type == 0x0004:
-            entry.title = str(struct.unpack('<{0}s'.format(field_size-1),
-                                        decrypted_content[:field_size-1])[0],
-                                        'utf-8')
+            entry.title = struct.unpack('<{0}s'.format(field_size-1),
+                    decrypted_content[:field_size-1])[0].decode('utf-8')
             decrypted_content = decrypted_content[1:]
         elif field_type == 0x0005:
-            entry.url = str(struct.unpack('<{0}s'.format(field_size-1),
-                                        decrypted_content[:field_size-1])[0],
-                                        'utf-8')
+            entry.url = struct.unpack('<{0}s'.format(field_size-1),
+                    decrypted_content[:field_size-1])[0].decode('utf-8')
             decrypted_content = decrypted_content[1:]
         elif field_type == 0x0006:
-            entry.username = str(struct.unpack('<{0}s'.format(field_size-1),
-                                        decrypted_content[:field_size-1])[0],
-                                         'utf-8')
+            entry.username = struct.unpack('<{0}s'.format(field_size-1),
+                    decrypted_content[:field_size-1])[0].decode('utf-8')
             decrypted_content = decrypted_content[1:]
         elif field_type == 0x0007:
-            entry.password = str(struct.unpack('<{0}s'.format(field_size-1),
-                                        decrypted_content[:field_size-1])[0],
-                                        'utf-8')
+            entry.password = struct.unpack('<{0}s'.format(field_size-1),
+                    decrypted_content[:field_size-1])[0].decode('utf-8')
         elif field_type == 0x0008:
-            entry.comment = str(struct.unpack('<{0}s'.format(field_size-1),
-                                        decrypted_content[:field_size-1])[0],
-                                        'utf-8')
+            entry.comment = struct.unpack('<{0}s'.format(field_size-1),
+                    decrypted_content[:field_size-1])[0].decode('utf-8')
         elif field_type == 0x0009:
             entry.creation = self._get_date(decrypted_content)
         elif field_type == 0x000A:
@@ -954,9 +952,8 @@ class KPDBv1(object):
         elif field_type == 0x000C:
             entry.expire = self._get_date(decrypted_content)
         elif field_type == 0x000D:
-            entry.binary_desc = str(struct.unpack('<{0}s'.format(field_size-1),
-                                       decrypted_content[:field_size-1])[0],
-                                       'utf-8')
+            entry.binary_desc = struct.unpack('<{0}s'.format(field_size-1),
+                    decrypted_content[:field_size-1])[0].decode('utf-8')
         elif field_type == 0x000E:
             entry.binary = decrypted_content[:field_size]
         elif field_type == 0xFFFF:
