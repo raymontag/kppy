@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License along with
 kppy.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+import binascii
 import struct
 from datetime import datetime
 from os import remove, path
@@ -830,12 +831,10 @@ class KPDBv1(object):
             except:
                 raise KPError('Could not read file.')
         sha = SHA256.new()
-        if len(buf) == 33:
-            sha.update(buf)
-            return sha.digest()
-        elif len(buf) == 65:
-            sha.update(struct.unpack('<65s', buf)[0].decode())
-            return sha.digest()
+        if len(buf) == 32:
+            return buf
+        elif len(buf) == 64:
+            return binascii.unhexlify(buf)
         else:
             while buf:
                 if len(buf) <= 2049:
