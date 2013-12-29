@@ -18,6 +18,7 @@ kppy.  If not, see <http://www.gnu.org/licenses/>.
 
 import binascii
 import sys
+import os
 import struct
 from datetime import datetime
 from os import remove, path
@@ -826,25 +827,31 @@ class KPDBv1(object):
     def _get_filekey(self):
         """This method creates a key from a keyfile."""
 
-        with open(self.keyfile, 'rb') as handler:
-            try:
-                buf = handler.read()
-            except:
-                raise KPError('Could not read file.')
-        sha = SHA256.new()
-        if len(buf) == 32:
-            return buf
-        elif len(buf) == 64:
-            return binascii.unhexlify(buf)
-        else:
-            while buf:
-                if len(buf) <= 2049:
+        if not os.path.exists(self.keyfile):
+                raise KPError('Keyfile not exists.')
+        try:
+            with open(self.keyfile, 'rb') as handler:
+                handler.seek(0,os.SEEK_END)
+                size = handler.tell()
+                handler.seek(0,os.SEEK_SET)
+
+                if size == 32:
+                    return handler.read(32)
+                elif size == 64:
+                    try:
+                        return binascii.unhexlify(handler.read(64))
+                    except (TypeError,binascii.Error):
+                        handler.seek(0,os.SEEK_SET)
+
+                sha = SHA256.new()
+                while True:
+                    buf = handler.read(2048)
                     sha.update(buf)
-                    buf = []
-                else:
-                    sha.update(buf[:2048])
-                    buf = buf[2048:]
-            return sha.digest()
+                    if len(buf) < 2048:
+                        break
+                return sha.digest()
+        except IOError as e:
+            raise KPError('Could not read file: %s' % e)
 
     def _cbc_decrypt(self, final_key, crypted_content):
         """This method decrypts the database"""
