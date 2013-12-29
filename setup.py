@@ -3,7 +3,7 @@ from distutils.core import setup
 setup( 
      name = "kppy", 
      version = "1.4.1", 
-     author = "Karsten-Kai König", 
+     author = "Karsten-Kai Koenig", 
      author_email = "kkoenig@posteo.de",
      url = "http://raymontag.github.com/kppy",
      download_url = "https://github.com/raymontag/kppy/archive/master.zip",
