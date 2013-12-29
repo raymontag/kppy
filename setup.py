@@ -2,11 +2,11 @@ from distutils.core import setup
 
 setup( 
      name = "kppy", 
-     version = "1.4.0", 
+     version = "1.4.1", 
      author = "Karsten-Kai König", 
      author_email = "kkoenig@posteo.de",
      url = "http://raymontag.github.com/kppy",
-     download_url = "https://github.com/raymontag/kppy/tarball/master",
+     download_url = "https://github.com/raymontag/kppy/archive/master.zip",
      description = "A Python-module to provide an API to KeePass 1.x files which are also used by the popular KeePassX.",
      long_description = ("kppy is a Python-module that provides full access to "
                         "KeePass 1.x password databases which are used by the "
@@ -15,7 +15,7 @@ setup(
                         "\t- Edit KP-files correctly and comfortable\n"
                         "\t- AES encryption\n"
                         "\t- First Python module for KeePass 1.x files that supports keyfiles, too.\n"
-                        "\t- First Python-KeePass module for Python 3.\n"
+                        "\t- First Python-KeePass module for Python 3. (Python 2 is supported, too)\n"
                         "Some explanation to KeePass databases: \n"
                         "\t- Database files are encrypted with AES\n"
                         "\t- Database entries are sorted in groups\n"

@@ -23,7 +23,7 @@ Features:
 ** Edit KP-files correctly and comfortable
 ** AES encryption
 ** First Python module for KeePass 1.x files that supports keyfiles, too.
-** First Python-KeePass module for Python 3.
+** First Python-KeePass module for Python 3 (Python 2 is supported, too).
 
 * Some explanation to KeePass databases:
 ** Database files are encrypted with AES
@@ -35,8 +35,8 @@ Features:
 Dependencies:
 -------------
 
-* Python 3
-* PyCrypto's py3k branch (https://github.com/dlitz/pycrypto/tarball/py3k)
+* Python 2 or Python 3
+* PyCrypto (https://www.dlitz.net/software/pycrypto/)
 
 Install:
 --------
