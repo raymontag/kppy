@@ -1,5 +1,9 @@
-kppy v.1.4.0
+kppy v.1.4.1
 ============
+
+! Due to a bug in KeePassX it is not possible to decrypt databases encrypted
+with a 64Byte-keyfile. Indeed it's possible to open such a database encrypted
+by the reference implementation KeePass 1.26 for Windows. !
 
 A Python-module to provide an API to KeePass 1.x files which are also used by
 the popular KeePassX.
