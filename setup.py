@@ -23,6 +23,7 @@ setup(
                         "\t- Every entry has a title for better identification\n"
                         "\t- Expiration dates for entries\n"),
      packages = ['kppy'],
+     install_requires = ['PyCrypto'],
      data_files = [('share/doc/kppy', ['README', 'COPYING'])],
      license = "GPL v3 or later"
      )
