@@ -1,20 +1,22 @@
 # -*- coding: utf-8 -*-
-'''
-Copyright (C) 2012 Karsten-Kai König <kkoenig@posteo.de>
+#
+# Copyright (C) 2012 Karsten-Kai König <kkoenig@posteo.de>
+#
+# This file is part of kppy.
+#
+# kppy is free software: you can redistribute it and/or modify it under the terms
+# of the GNU General Public License as published by the Free Software Foundation,
+# either version 3 of the License, or at your option) any later version.
+#
+# kppy is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# kppy.  If not, see <http://www.gnu.org/licenses/>.
+#
 
-This file is part of kppy.
-
-kppy is free software: you can redistribute it and/or modify it under the terms
-of the GNU General Public License as published by the Free Software Foundation,
-either version 3 of the License, or at your option) any later version.
-
-kppy is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with
-kppy.  If not, see <http://www.gnu.org/licenses/>.
-'''
+"""This module implements the access to KeePass 1.x-databases."""
 
 import binascii
 import sys
@@ -30,8 +32,6 @@ from Crypto.Cipher import AES
 from kppy.groups import v1Group
 from kppy.entries import v1Entry
 from kppy.exceptions import KPError
-
-__doc__ = """This module implements the access to KeePass 1.x-databases."""
 
 
 class KPDBv1(object):
@@ -77,9 +77,7 @@ class KPDBv1(object):
         will be ignored.
         
         """
-        
-        
-     
+
         if filepath is not None and password is None and keyfile is None:
             raise KPError('Missing argument: Password or keyfile '
                           'needed additionally to open an existing database!')
@@ -321,7 +319,8 @@ class KPDBv1(object):
                 # There should be a header at least
                 if len(buf) < 124:
                     raise KPError('Unexpected file size. It should be more or'
-                                  'equal 124 bytes but it is {0}!'.format(len(buf)))
+                                  'equal 124 bytes but it is '
+                                  '{0}!'.format(len(buf)))
             except:
                 raise
         return buf
@@ -409,7 +408,7 @@ class KPDBv1(object):
         header += struct.pack('<32s', self._contents_hash)
         header += struct.pack('<32s', self._transf_randomseed)
         if self._key_transf_rounds < 150000:
-            self._key_tranf_rounds = 150000
+            self._key_transf_rounds = 150000
         header += struct.pack('<I', self._key_transf_rounds)
 
         # Finally encrypt everything...
@@ -701,23 +700,31 @@ class KPDBv1(object):
         
         """
         
-        if type(title) is not str or type(image) is not int or image < 0 or \
-            type(url) is not str or type(username) is not str or \
-            type(password) is not str or type(comment) is not str or \
-            type(y) is not int or type(mon) is not int or type(d) is not int or \
-            type(h) is not int or type(min_) is not int or type(s) is not int or\
-            type(group) is not v1Group:
+        if (type(title) is not str or
+            type(image) is not int or image < 0 or
+            type(url) is not str or
+            type(username) is not str or
+            type(password) is not str or
+            type(comment) is not str or
+            type(y) is not int or
+            type(mon) is not int or
+            type(d) is not int or
+            type(h) is not int or
+            type(min_) is not int
+            or type(s) is not int or
+            type(group) is not v1Group):
             raise KPError("One argument has not a valid type.")
         elif group not in self.groups:
             raise KPError("Group doesn't exist.")
-        elif y > 9999 or y < 1 or mon > 12 or mon < 1 or d > 31 or d < 1 or \
-            h > 23 or h < 0 or min_ > 59 or min_ < 0 or s > 59 or s < 0:
+        elif (y > 9999 or y < 1 or mon > 12 or mon < 1 or d > 31 or d < 1 or
+              h > 23 or h < 0 or min_ > 59 or min_ < 0 or s > 59 or s < 0):
             raise KPError("No legal date")
-        elif ((mon == 1 or mon == 3 or mon == 5 or mon == 7 or mon == 8 or \
-             mon == 10 or mon == 12) and d > 31) or ((mon == 4 or mon == 6 or \
-             mon == 9 or mon == 11) and d > 30) or (mon == 2 and d > 28):
+        elif (((mon == 1 or mon == 3 or mon == 5 or mon == 7 or mon == 8 or
+                mon == 10 or mon == 12) and d > 31) or
+               ((mon == 4 or mon == 6 or mon == 9 or mon == 11) and d > 30) or
+               (mon == 2 and d > 28)):
             raise KPError("Given day doesn't exist in given month")
-        
+
         Random.atfork()
         uuid = Random.get_random_bytes(16)
         entry = v1Entry(group.id_, group, image, title, url, username,
@@ -805,7 +812,7 @@ class KPDBv1(object):
         aes = AES.new(self._transf_randomseed, AES.MODE_ECB)
 
         # Encrypt the created hash
-        for i in range(self._key_transf_rounds):
+        for _ in range(self._key_transf_rounds):
             masterkey = aes.encrypt(masterkey)
 
         # Finally, hash it again...
@@ -828,20 +835,20 @@ class KPDBv1(object):
         """This method creates a key from a keyfile."""
 
         if not os.path.exists(self.keyfile):
-                raise KPError('Keyfile not exists.')
+            raise KPError('Keyfile not exists.')
         try:
             with open(self.keyfile, 'rb') as handler:
-                handler.seek(0,os.SEEK_END)
+                handler.seek(0, os.SEEK_END)
                 size = handler.tell()
-                handler.seek(0,os.SEEK_SET)
+                handler.seek(0, os.SEEK_SET)
 
                 if size == 32:
                     return handler.read(32)
                 elif size == 64:
                     try:
                         return binascii.unhexlify(handler.read(64))
-                    except (TypeError,binascii.Error):
-                        handler.seek(0,os.SEEK_SET)
+                    except (TypeError, binascii.Error):
+                        handler.seek(0, os.SEEK_SET)
 
                 sha = SHA256.new()
                 while True:
@@ -874,7 +881,7 @@ class KPDBv1(object):
         aes = AES.new(final_key, AES.MODE_CBC, self._enc_iv)
         padding = (16 - len(content) % AES.block_size)
 
-        for i in range(padding):
+        for _ in range(padding):
             content += chr(padding).encode()
 
         temp = bytes(content)
