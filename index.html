@@ -41,8 +41,11 @@
         <h1>Actual version of kppy from January 05, 2015: 1.4.2</h1>
 	<p><em>My main focus has switched to <a href="https://github.com/raymontag/rust-keepass">reimplement</a> this project in <a href="http://www.rust-lang.org/">Rust</a> as it allows me to realize my vision of a secure password manager which is not possible with Python. However I will publish bug fixes and answer bug reports if there are any. As KeePassC is stable and feature-complete this shouldn't be a reason for not using it anymore.</em></p>
 
+<p>! Due to a bug in KeePassX it is not possible to decrypt databases encrypted
+with a 64Byte-keyfile. Indeed it's possible to open such a database encrypted
+by the reference implementation KeePass 1.26 for Windows. !</p>
 
-<p>A Python 3-module to provide an API to KeePass v1.x password database files which are also used by
+<p>A Python 2&3-module to provide an API to KeePass v1.x password database files which are also used by
 the popular KeePassX. 
 
 <a class="FlattrButton" style="display:none;" rev="flattr;button:compact;" href="http://raymontag.github.com/kppy"></a>
@@ -93,8 +96,8 @@ the popular KeePassX.
 <h2>Dependencies:</h2>
 
 <ul>
-<li>Python 3.x</li>
-<li>PyCrypto's py3k branch (<a href="https://github.com/dlitz/pycrypto/tarball/py3k">https://github.com/dlitz/pycrypto/tarball/py3k</a>)</li>
+<li>Python 3.x (Python 2 should work, too, but is not well tested)</li>
+<li>PyCrypto (<a href="https://www.dlitz.net/software/pycrypto/">https://www.dlitz.net/software/pycrypto/</a>)</li>
 </ul><h2>Install:</h2>
 
 <p>Just type "python setup.py install" (or "python3 setup.py install") with root
@@ -107,7 +110,9 @@ module, the password is saved as plain text in RAM. Even if
 the database was closed correctly it is possible that the password lies
 somewhere in your computer's RAM, it's not possible to prevent this in Python.
 That is, if your computer is compromised it is possible to dump the password
-from memory. To prevent some scenarios you could change the working directory of Python to /var/empty on UNIX-like systems while using kppy. Are core dump wouldn't be possible unless you're using kppy as root.</p>
+from memory. To prevent some scenarios you could change the working directory 
+of Python to /var/empty on UNIX-like systems while using kppy. A core dump 
+wouldn't be possible unless you're using kppy as root.</p>
 
 <p>Copyright (C) 2012-2014 Karsten-Kai König <a href="mailto:grayfox@outerhaven.de">grayfox@outerhaven.de</a></p>
 
