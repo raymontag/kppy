@@ -1,10 +1,12 @@
+"""implements class v1Group; a simple group of a KeePass 1.x database"""
+
 from datetime import datetime
 
 from kppy.exceptions import KPError
 
 class v1Group(object):
-    """StdGroup represents a simple group of a KeePass 1.x database.
-    
+    """v1Group represents a simple group of a KeePass 1.x database.
+
     Attributes:
     - id_ is the group id (unsigned int)
     - title is the group title (string)
@@ -17,15 +19,20 @@ class v1Group(object):
     
     """
 
-    def __init__(self, id_ = None, title = None, image = 1, db = None,
-                 level = 0, parent = None, children = [], entries = [],
-                 creation = None, last_mod = None, last_access = None,
-                 expire = None, flags = None):
-        """Initialize a StdGroup-instance.
+    def __init__(self, id_=None, title=None, image=1, db=None,
+                 level=0, parent=None, children=None, entries=None,
+                 creation=None, last_mod=None, last_access=None,
+                 expire=None, flags=None):
+        """Initialize a v1Group-instance.
 
         It's recommended to use create_group of KPDBv1 and not this directly.
 
         """
+
+        if children is None:
+            children = []
+        if entries is None:
+            entries = []
 
         self.id_ = id_
         self.title = title
