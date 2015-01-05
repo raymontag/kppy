@@ -1,3 +1,5 @@
+"""Defines KPError exception class"""
+
 class KPError(Exception):
     """KPError is a exception class to handle exception raised by KPDB.
     
@@ -15,9 +17,5 @@ class KPError(Exception):
         
     """
 
-    def __init__(self, error):
-        self.msg = error
-
-    def __str__(self):
-        return ("KPError: "+self.msg)
+    pass
 
