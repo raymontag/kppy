@@ -1,10 +1,12 @@
+"""implements class v1Entry; a simple entry of a KeePass 1.x database"""
+
 from datetime import datetime
 
 from kppy.exceptions import KPError
 
 class v1Entry(object):
-    """StdEntry represents a simple entry of a KeePass 1.x database.
-    
+    """v1Entry represents a simple entry of a KeePass 1.x database.
+ 
     Attributes:
         - uuid is an "Universal Unique ID", that is it identifies the entry (16 bytes string)
         - group_id is the id of the holding group (unsigned int)
