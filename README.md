@@ -1,4 +1,4 @@
-kppy v.1.4.2
+kppy v.1.5.0
 ============
 
 ! Due to a bug in KeePassX it is not possible to decrypt databases encrypted
@@ -8,8 +8,8 @@ by the reference implementation KeePass 1.26 for Windows. !
 A Python-module to provide an API to KeePass 1.x files which are also used by
 the popular KeePassX.
 
-* License: GPL v3 or later
-* Author: Karsten-Kai König <kkoenig@posteo.de>
+* License: ISC
+* Author: Karsten-Kai König <grayfox@outerhaven.de>
 * Stable download: https://github.com/raymontag/kppy/tarball/master
 * Website: http://raymontag.github.com/kppy
 * Bug tracker: https://github.com/raymontag/kppy/issues?state=open
@@ -56,15 +56,10 @@ from memory. To prevent some scenarios you could change the working directory of
 Python to /var/empty on UNIX-like systems while using kppy. A core dump wouldn't
  be possible unless you're using kppy as root.
 
-Copyright (C) 2012 Karsten-Kai König <kkoenig@posteo.de>
+Copyright (c) 2012-2018 Karsten-Kai König <grayfox@outerhaven.de>
 
-kppy is free software: you can redistribute it and/or modify it under the terms
-of the GNU General Public License as published by the Free Software Foundation,
-either version 3 of the License, or at your option) any later version.
+Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
 
-kppy is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-You should have received a copy of the GNU General Public License along with
-kppy.  If not, see <http://www.gnu.org/licenses/>.
+

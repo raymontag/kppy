@@ -2,9 +2,9 @@ from distutils.core import setup
 
 setup( 
      name = "kppy", 
-     version = "1.4.2",
+     version = "1.5.0",
      author = "Karsten-Kai Koenig", 
-     author_email = "kkoenig@posteo.de",
+     author_email = "grayfox@outerhaven.de",
      url = "http://raymontag.github.com/kppy",
      download_url = "https://github.com/raymontag/kppy/archive/master.zip",
      description = "A Python-module to provide an API to KeePass 1.x files which are also used by the popular KeePassX.",
@@ -25,5 +25,5 @@ setup(
      packages = ['kppy'],
      install_requires = ['PyCryptodome'],
      data_files = [('share/doc/kppy', ['README', 'COPYING'])],
-     license = "GPL v3 or later"
+     license = "ISC"
      )
