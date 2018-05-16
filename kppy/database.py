@@ -25,9 +25,9 @@ import struct
 from datetime import datetime
 from os import remove, path
 
-from Crypto import Random
-from Crypto.Hash import SHA256
-from Crypto.Cipher import AES
+from Cryptodome import Random
+from Cryptodome.Hash import SHA256
+from Cryptodome.Cipher import AES
 
 from kppy.groups import v1Group
 from kppy.entries import v1Entry
