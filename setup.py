@@ -24,6 +24,6 @@ setup(
                         "\t- Expiration dates for entries\n"),
      packages = ['kppy'],
      install_requires = ['PyCryptodome'],
-     data_files = [('share/doc/kppy', ['LICENSE.md', 'LICENSE.md'])],
+     data_files = [('share/doc/kppy', ['LICENSE.md', 'README.md'])],
      license = "ISC"
      )
