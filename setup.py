@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup( 
      name = "kppy", 
-     version = "1.5.0",
+     version = "1.5.1",
      author = "Karsten-Kai Koenig", 
      author_email = "grayfox@outerhaven.de",
      url = "http://raymontag.github.com/kppy",
