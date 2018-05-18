@@ -1,4 +1,4 @@
-kppy v.1.5.1
+kppy v.1.5.2
 ============
 
 ! Due to a bug in KeePassX it is not possible to decrypt databases encrypted

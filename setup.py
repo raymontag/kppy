@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup( 
      name = "kppy", 
-     version = "1.5.1",
+     version = "1.5.2",
      author = "Karsten-Kai Koenig", 
      author_email = "grayfox@outerhaven.de",
      url = "http://raymontag.github.com/kppy",
@@ -23,7 +23,7 @@ setup(
                         "\t- Every entry has a title for better identification\n"
                         "\t- Expiration dates for entries\n"),
      packages = ['kppy'],
-     install_requires = ['PyCryptodome'],
+     install_requires = ['pycryptodomex'],
      data_files = [('share/doc/kppy', ['LICENSE.md', 'README.md'])],
      license = "ISC"
      )
